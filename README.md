@@ -90,6 +90,10 @@ Chỉnh sửa CSS variables trong `app/globals.css`:
 2. Tạo các bảng: `rooms`, `tenants`, `meters`, `bills`, `payments`
 3. Thay thế mock data bằng API calls
 
+# AI tools used:
+
+v0 by Vercel - https://v0.dev?utm_source=chatgpt.com
+
 ## License
 
 MIT
