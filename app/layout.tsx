@@ -9,7 +9,6 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: 'Quản Lý Phòng Trọ',
   description: 'Ứng dụng quản lý phòng trọ đơn giản cho chủ nhà',
-  generator: 'v0.app',
   icons: {
     icon: [
       {

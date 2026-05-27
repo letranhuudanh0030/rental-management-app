@@ -1,0 +1,3 @@
+-- Demo seed is applied per-user via POST /api/seed (see lib/seed/demo-data.ts)
+-- Run migration first: supabase db push
+-- Then sign up in the app and click "Tải dữ liệu demo" on Settings.

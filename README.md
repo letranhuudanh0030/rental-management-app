@@ -1,98 +1,101 @@
-# Quản Lý Phòng Trọ
+# Quản lý phòng trọ — Rental Management MVP
 
-Ứng dụng quản lý phòng trọ đơn giản dành cho chủ nhà Việt Nam, tối ưu cho thiết bị di động.
+Ứng dụng fullstack cho chủ nhà trọ quy mô nhỏ (10–50 phòng) tại Việt Nam. Tối ưu mobile, workflow thu tiền hàng tháng nhanh, ít thao tác.
+
+## Tech stack
+
+- **Next.js** (App Router) + TypeScript
+- **Tailwind CSS** + shadcn/ui
+- **Supabase** (Auth, Postgres, RLS)
 
 ## Tính năng
 
-- **Tổng quan**: Dashboard hiển thị doanh thu tháng, tỷ lệ lấp đầy, cảnh báo hóa đơn quá hạn
-- **Danh sách phòng**: Quản lý phòng theo tầng, tìm kiếm, xem trạng thái (đang thuê/trống/bảo trì)
-- **Ghi điện nước**: Nhập số đồng hồ điện/nước hàng tháng, tự động tính tiêu thụ
-- **Hóa đơn**: Xem chi tiết hóa đơn với tiền phòng, điện, nước, dịch vụ
-- **Thu tiền**: Theo dõi thanh toán, lọc theo trạng thái, gọi điện/Zalo nhanh
+| Module | Mô tả |
+|--------|--------|
+| Đăng nhập / Đăng ký | Supabase Auth |
+| Phòng | CRUD, lọc tầng, trạng thái |
+| Khách thuê | Thêm khách, gán phòng, hợp đồng |
+| Điện nước | Nhập số hàng loạt, spreadsheet-style |
+| Hóa đơn | Tự tính điện/nước, tạo hóa đơn tháng |
+| Thu tiền | Tiền mặt / chuyển khoản, lọc nợ |
+| Nhắc nợ | Mẫu tin Zalo/SMS, sao chép nhanh |
+| Tổng quan | Doanh thu, công nợ, tỷ lệ lấp phòng |
 
 ## Cài đặt
 
-### Yêu cầu
-
-- Node.js 18+ 
-- pnpm (khuyên dùng) hoặc npm/yarn
-
-### Chạy ở máy local
+### 1. Clone & cài dependency
 
 ```bash
-# Clone project
-git clone <repository-url>
-cd v0-project
-
-# Cài đặt dependencies
 pnpm install
+```
 
-# Chạy development server
+### 2. Supabase
+
+1. Tạo project tại [supabase.com](https://supabase.com)
+2. Copy `.env.example` → `.env.local` và điền URL + anon key
+3. Chạy migration:
+
+```bash
+npx supabase link --project-ref YOUR_REF
+npx supabase db push
+```
+
+Hoặc dán nội dung `supabase/migrations/20260527000000_initial_schema.sql` vào SQL Editor trên dashboard.
+
+4. Trong **Authentication → Providers**, bật Email. Tắt “Confirm email” nếu muốn dev nhanh (không khuyến nghị production).
+
+### 3. Chạy app
+
+```bash
 pnpm dev
 ```
 
-Mở trình duyệt tại [http://localhost:3000](http://localhost:3000)
+Mở [http://localhost:3000](http://localhost:3000) → Đăng ký → **Cài đặt** → **Tải dữ liệu demo**.
 
-### Build production
+## Cấu trúc thư mục
+
+```
+app/
+  (auth)/login, signup
+  (app)/          # Shell + bottom nav
+  api/            # REST routes
+lib/
+  supabase/       # Client, server, middleware
+  services/       # Invoice generation
+  types/          # TypeScript models
+  seed/           # Demo data
+supabase/migrations/
+```
+
+## API (authenticated)
+
+| Method | Path | Mô tả |
+|--------|------|--------|
+| GET | `/api/dashboard` | Tổng quan |
+| GET/POST | `/api/rooms` | Phòng |
+| GET/POST | `/api/tenants` | Khách + hợp đồng |
+| GET/POST | `/api/meters?period=YYYY-MM-01` | Điện nước |
+| GET | `/api/invoices?period=` | Hóa đơn |
+| POST | `/api/invoices/generate` | Tạo HĐ tháng |
+| POST | `/api/payments` | Ghi nhận thu |
+| GET/PATCH | `/api/settings` | Giá điện/nước |
+| POST | `/api/seed` | Dữ liệu demo (dev) |
+
+## Quy tắc nghiệp vụ
+
+- **Điện/nước**: `(số mới − số cũ) × đơn giá` từ `landlord_settings`
+- **Hóa đơn**: Tự tạo từ phòng `occupied` + chỉ số tháng + hợp đồng active
+- **Thanh toán**: `unpaid` | `paid_cash` | `paid_transfer`
+- **Quá hạn**: `unpaid` và `due_date < hôm nay`
+
+## Production
 
 ```bash
 pnpm build
 pnpm start
 ```
 
-## Cấu trúc thư mục
-
-```
-├── app/
-│   ├── globals.css      # Styles và theme colors
-│   ├── layout.tsx       # Root layout với font tiếng Việt
-│   └── page.tsx         # Trang chính với navigation
-├── components/
-│   ├── bottom-nav.tsx   # Thanh điều hướng dưới cùng
-│   ├── dashboard.tsx    # Trang tổng quan
-│   ├── room-list.tsx    # Danh sách phòng
-│   ├── meter-input.tsx  # Ghi số điện nước
-│   ├── billing-page.tsx # Xem hóa đơn
-│   └── payment-tracking.tsx # Theo dõi thu tiền
-├── lib/
-│   └── data.ts          # Types và mock data
-└── components/ui/       # Shadcn UI components
-```
-
-## Công nghệ sử dụng
-
-- **Framework**: Next.js 15 (App Router)
-- **UI**: Tailwind CSS + shadcn/ui
-- **Language**: TypeScript
-- **Font**: Inter (hỗ trợ tiếng Việt)
-
-## Tùy chỉnh
-
-### Thay đổi dữ liệu mẫu
-
-Chỉnh sửa file `lib/data.ts` để thay đổi:
-- Danh sách phòng (`mockRooms`)
-- Giá điện/nước/phòng (`mockPrices`)
-- Hóa đơn mẫu (`mockBills`)
-
-### Thay đổi màu sắc
-
-Chỉnh sửa CSS variables trong `app/globals.css`:
-- `--primary`: Màu chính (xanh lá)
-- `--accent`: Màu nhấn (vàng cam)
-- `--background`: Màu nền
-
-## Tích hợp database (tùy chọn)
-
-Ứng dụng hiện sử dụng mock data. Để tích hợp database thật:
-
-1. Kết nối Supabase hoặc database khác
-2. Tạo các bảng: `rooms`, `tenants`, `meters`, `bills`, `payments`
-3. Thay thế mock data bằng API calls
-
-# AI tools used:
-
-v0 by Vercel - https://v0.dev?utm_source=chatgpt.com
+Đặt biến môi trường trên Vercel/hosting. Không bật `ALLOW_SEED` trên production trừ khi cần.
 
 ## License
 
