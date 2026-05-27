@@ -1,11 +1,17 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { Home, Building2, Gauge, Receipt, CreditCard, LogOut, MessageSquare } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
+import {
+  METER_INPUT_VIEW_EVENT,
+  readMeterInputView,
+  type MeterInputView,
+} from '@/lib/constants/meter-input'
 
 const tabs = [
   { href: '/', label: 'Tổng quan', icon: Home },
@@ -26,9 +32,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     router.refresh()
   }
 
+  const [meterView, setMeterView] = useState<MeterInputView>('spreadsheet')
+
+  useEffect(() => {
+    if (!pathname.startsWith('/meters')) return
+    setMeterView(readMeterInputView())
+    const onViewChange = () => setMeterView(readMeterInputView())
+    window.addEventListener(METER_INPUT_VIEW_EVENT, onViewChange)
+    return () => window.removeEventListener(METER_INPUT_VIEW_EVENT, onViewChange)
+  }, [pathname])
+
+  const isWidePage = pathname.startsWith('/meters') && meterView === 'spreadsheet'
+
   return (
     <div className="min-h-screen bg-background pb-20">
-      <div className="max-w-lg mx-auto">{children}</div>
+      <div className={cn('mx-auto', isWidePage ? 'max-w-3xl w-full' : 'max-w-lg')}>
+        {children}
+      </div>
 
       <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border">
         <div className="flex items-center justify-around h-16 max-w-lg mx-auto">
