@@ -22,8 +22,11 @@ import { cn } from '@/lib/utils'
 import { apiPost } from '@/hooks/use-fetch'
 import type { MeterBulkRow } from '@/lib/types/database'
 import {
+  formatIntegerVi,
   formatMonthLabel,
   formatShortCurrency,
+  formatDigitsWithDots,
+  stripNumberFormatting,
   shiftPeriodMonth,
 } from '@/lib/utils/format'
 import {
@@ -334,11 +337,11 @@ export function MeterSpreadsheet({
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
             <Zap className="w-3.5 h-3.5 text-amber-500" />
-            {settings.electric_price.toLocaleString('vi-VN')}đ/kWh
+            {formatIntegerVi(settings.electric_price)}đ/kWh
           </span>
           <span className="flex items-center gap-1">
             <Droplets className="w-3.5 h-3.5 text-blue-500" />
-            {settings.water_price.toLocaleString('vi-VN')}đ/m³
+            {formatIntegerVi(settings.water_price)}đ/m³
           </span>
           <span className="ml-auto font-medium text-foreground">
             {savedCount}/{rows.length} đã lưu
@@ -460,8 +463,8 @@ export function MeterSpreadsheet({
                         alertCellClass(c?.electricAlert ?? 'none')
                       )}
                     >
-                      {c && (parseMeterNumber(d.electricCurrent) !== null)
-                        ? c.electricUsage
+                      {c && parseMeterNumber(d.electricCurrent) !== null
+                        ? formatIntegerVi(c.electricUsage)
                         : '—'}
                     </td>
 
@@ -491,7 +494,7 @@ export function MeterSpreadsheet({
                       )}
                     >
                       {c && parseMeterNumber(d.waterCurrent) !== null
-                        ? c.waterUsage
+                        ? formatIntegerVi(c.waterUsage)
                         : '—'}
                     </td>
 
@@ -555,18 +558,26 @@ function MeterCell({
   muted?: boolean
   primary?: boolean
 }) {
+  const [focused, setFocused] = useState(false)
+  const raw = stripNumberFormatting(value)
+  const displayValue = focused ? raw : raw ? formatDigitsWithDots(raw) : ''
+
   return (
     <td className="px-0.5 py-1">
       <input
         id={id}
         type="text"
-        inputMode="decimal"
+        inputMode="numeric"
         enterKeyHint="next"
         autoComplete="off"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
+        value={displayValue}
+        onChange={(e) => onChange(stripNumberFormatting(e.target.value))}
         onKeyDown={onKeyDown}
-        onFocus={(e) => e.currentTarget.select()}
+        onFocus={(e) => {
+          setFocused(true)
+          e.currentTarget.select()
+        }}
+        onBlur={() => setFocused(false)}
         className={cn(
           'w-full min-w-0 rounded-md border text-center font-semibold tabular-nums',
           'outline-none transition-[box-shadow,border-color]',

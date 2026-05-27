@@ -3,7 +3,16 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Home, Building2, Gauge, Receipt, CreditCard, LogOut, MessageSquare } from 'lucide-react'
+import {
+  Home,
+  Building2,
+  Users,
+  Gauge,
+  Receipt,
+  CreditCard,
+  LogOut,
+  MessageSquare,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -16,6 +25,7 @@ import {
 const tabs = [
   { href: '/', label: 'Tổng quan', icon: Home },
   { href: '/rooms', label: 'Phòng', icon: Building2 },
+  { href: '/tenants', label: 'Khách', icon: Users },
   { href: '/meters', label: 'Điện nước', icon: Gauge },
   { href: '/bills', label: 'Hóa đơn', icon: Receipt },
   { href: '/payments', label: 'Thu tiền', icon: CreditCard },
@@ -51,7 +61,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <nav className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border">
-        <div className="flex items-center justify-around h-16 max-w-lg mx-auto">
+        <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-1">
           {tabs.map((tab) => {
             const Icon = tab.icon
             const isActive =
@@ -63,12 +73,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 key={tab.href}
                 href={tab.href}
                 className={cn(
-                  'flex flex-col items-center justify-center flex-1 h-full gap-0.5 transition-colors',
+                  'flex flex-col items-center justify-center flex-1 min-w-0 h-full gap-0.5 transition-colors',
                   isActive ? 'text-primary' : 'text-muted-foreground'
                 )}
               >
-                <Icon className={cn('w-6 h-6', isActive && 'stroke-[2.5]')} />
-                <span className={cn('text-xs', isActive ? 'font-semibold' : 'font-medium')}>
+                <Icon className={cn('w-5 h-5 shrink-0', isActive && 'stroke-[2.5]')} />
+                <span
+                  className={cn(
+                    'text-[10px] leading-tight text-center truncate w-full px-0.5',
+                    isActive ? 'font-semibold' : 'font-medium'
+                  )}
+                >
                   {tab.label}
                 </span>
               </Link>

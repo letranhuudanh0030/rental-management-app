@@ -1,7 +1,31 @@
 import type { InvoiceDisplayStatus, PaymentStatus } from '@/lib/types/database'
 
+const viInteger = new Intl.NumberFormat('vi-VN', {
+  maximumFractionDigits: 0,
+})
+
+/** 1.000.000 */
+export function formatIntegerVi(value: number): string {
+  return viInteger.format(value)
+}
+
+/** 1.000.000đ */
 export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('vi-VN').format(amount) + 'đ'
+  return formatIntegerVi(amount) + 'đ'
+}
+
+/** Bỏ dấu chấm/phẩy khi nhập (1.000.000 → 1000000) */
+export function stripNumberFormatting(value: string): string {
+  return value.replace(/\./g, '').replace(/,/g, '').replace(/\s/g, '')
+}
+
+/** Định dạng chuỗi số để hiển thị (chỉ chữ số) */
+export function formatDigitsWithDots(digits: string): string {
+  const raw = stripNumberFormatting(digits)
+  if (!raw) return ''
+  const n = Number(raw)
+  if (!Number.isFinite(n)) return digits
+  return formatIntegerVi(n)
 }
 
 export function formatShortCurrency(amount: number): string {

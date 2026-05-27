@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { apiPost } from '@/hooks/use-fetch'
 import type { MeterBulkRow } from '@/lib/types/database'
-import { formatMonthLabel, shiftPeriodMonth } from '@/lib/utils/format'
+import { formatIntegerVi, formatMonthLabel, shiftPeriodMonth } from '@/lib/utils/format'
 import {
   calculateElectricUsage,
   calculateWaterUsage,
@@ -171,11 +171,11 @@ export function MeterCards({
       <div className="px-4 py-3 flex gap-4 text-sm">
         <div className="flex items-center gap-2">
           <Zap className="w-4 h-4 text-amber-500" />
-          <span>{settings.electric_price.toLocaleString()}đ/kWh</span>
+          <span>{formatIntegerVi(settings.electric_price)}đ/kWh</span>
         </div>
         <div className="flex items-center gap-2">
           <Droplets className="w-4 h-4 text-blue-500" />
-          <span>{settings.water_price.toLocaleString()}đ/m³</span>
+          <span>{formatIntegerVi(settings.water_price)}đ/m³</span>
         </div>
       </div>
 

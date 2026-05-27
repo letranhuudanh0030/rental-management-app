@@ -66,3 +66,200 @@ export async function POST(request: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json(data, { status: 201 })
 }
+
+export async function PATCH(request: Request) {
+  const { supabase, user, errorResponse } = await requireUser()
+  if (errorResponse) return errorResponse
+
+  const body = await request.json()
+  const {
+    room_id,
+    name,
+    floor,
+    base_rent,
+    status,
+    notes,
+    sort_order,
+    tenant_id,
+  }: {
+    room_id: string
+    name?: string
+    floor?: number
+    base_rent?: number
+    status?: 'occupied' | 'vacant' | 'maintenance'
+    notes?: string | null
+    sort_order?: number
+    /** null = bỏ gán khách; undefined = không đổi */
+    tenant_id?: string | null
+  } = body
+
+  if (!room_id) {
+    return NextResponse.json({ error: 'Thiếu room_id' }, { status: 400 })
+  }
+
+  const payload: Record<string, unknown> = {}
+  if (name !== undefined) payload.name = name
+  if (floor !== undefined) payload.floor = floor
+  if (base_rent !== undefined) payload.base_rent = base_rent
+  if (status !== undefined) payload.status = status
+  if (notes !== undefined) payload.notes = notes
+  if (sort_order !== undefined) payload.sort_order = sort_order
+
+  if (Object.keys(payload).length === 0 && tenant_id === undefined) {
+    return NextResponse.json({ error: 'Thiếu dữ liệu cập nhật' }, { status: 400 })
+  }
+
+  if (Object.keys(payload).length > 0) {
+    const { error: updateError } = await supabase
+      .from('rooms')
+      .update(payload)
+      .eq('user_id', user!.id)
+      .eq('id', room_id)
+
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500 })
+    }
+  }
+
+  if (tenant_id !== undefined) {
+    const { data: room } = await supabase
+      .from('rooms')
+      .select('base_rent, status')
+      .eq('user_id', user!.id)
+      .eq('id', room_id)
+      .single()
+
+    if (!room) {
+      return NextResponse.json({ error: 'Không tìm thấy phòng' }, { status: 404 })
+    }
+
+    const { data: currentContract } = await supabase
+      .from('contracts')
+      .select('id, tenant_id')
+      .eq('user_id', user!.id)
+      .eq('room_id', room_id)
+      .eq('is_active', true)
+      .maybeSingle()
+
+    const currentTenantId = currentContract?.tenant_id ?? null
+    const nextTenantId = tenant_id || null
+
+    if (currentTenantId !== nextTenantId) {
+      if (!nextTenantId) {
+        await supabase
+          .from('contracts')
+          .update({ is_active: false })
+          .eq('user_id', user!.id)
+          .eq('room_id', room_id)
+          .eq('is_active', true)
+
+        if (room.status === 'occupied') {
+          await supabase
+            .from('rooms')
+            .update({ status: 'vacant' })
+            .eq('user_id', user!.id)
+            .eq('id', room_id)
+        }
+      } else {
+        const { data: tenant } = await supabase
+          .from('tenants')
+          .select('id')
+          .eq('user_id', user!.id)
+          .eq('id', nextTenantId)
+          .maybeSingle()
+
+        if (!tenant) {
+          return NextResponse.json({ error: 'Không tìm thấy khách thuê' }, { status: 404 })
+        }
+
+        const { data: tenantContract } = await supabase
+          .from('contracts')
+          .select('room_id')
+          .eq('user_id', user!.id)
+          .eq('tenant_id', nextTenantId)
+          .eq('is_active', true)
+          .maybeSingle()
+
+        const previousRoomId = tenantContract?.room_id ?? null
+
+        await supabase
+          .from('contracts')
+          .update({ is_active: false })
+          .eq('user_id', user!.id)
+          .eq('room_id', room_id)
+          .eq('is_active', true)
+
+        await supabase
+          .from('contracts')
+          .update({ is_active: false })
+          .eq('user_id', user!.id)
+          .eq('tenant_id', nextTenantId)
+          .eq('is_active', true)
+
+        await supabase.from('contracts').insert({
+          user_id: user!.id,
+          room_id,
+          tenant_id: nextTenantId,
+          start_date: new Date().toISOString().slice(0, 10),
+          monthly_rent: room.base_rent,
+          deposit: 0,
+          is_active: true,
+        })
+
+        await supabase
+          .from('rooms')
+          .update({ status: 'occupied' })
+          .eq('user_id', user!.id)
+          .eq('id', room_id)
+
+        if (previousRoomId && previousRoomId !== room_id) {
+          await supabase
+            .from('rooms')
+            .update({ status: 'vacant' })
+            .eq('user_id', user!.id)
+            .eq('id', previousRoomId)
+            .eq('status', 'occupied')
+        }
+      }
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('rooms')
+    .select('*')
+    .eq('user_id', user!.id)
+    .eq('id', room_id)
+    .single()
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  return NextResponse.json(data)
+}
+
+export async function DELETE(request: Request) {
+  const { supabase, user, errorResponse } = await requireUser()
+  if (errorResponse) return errorResponse
+
+  const body = await request.json()
+  const { room_id }: { room_id: string } = body
+
+  if (!room_id) {
+    return NextResponse.json({ error: 'Thiếu room_id' }, { status: 400 })
+  }
+
+  const { data, error } = await supabase
+    .from('rooms')
+    .delete()
+    .eq('user_id', user!.id)
+    .eq('id', room_id)
+    .select()
+    .single()
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ deleted: true, room: data })
+}

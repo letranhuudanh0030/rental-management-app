@@ -14,7 +14,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useFetch, apiPost } from '@/hooks/use-fetch'
+import { apiPatch, apiPost, useFetch } from '@/hooks/use-fetch'
 import type { InvoiceWithDetails } from '@/lib/types/database'
 import {
   formatCurrency,
@@ -35,8 +35,9 @@ function PaymentsContent() {
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean
     bill: InvoiceWithDetails | null
+    mode: 'pay' | 'undo' | 'resubmit'
     method: 'cash' | 'transfer'
-  }>({ isOpen: false, bill: null, method: 'cash' })
+  }>({ isOpen: false, bill: null, mode: 'pay', method: 'cash' })
 
   const filteredBills = useMemo(() => {
     return (bills ?? []).filter((bill) => {
@@ -61,14 +62,32 @@ function PaymentsContent() {
 
   const confirmPayment = async () => {
     if (!confirmDialog.bill) return
+
     try {
-      await apiPost('/api/payments', {
-        invoice_id: confirmDialog.bill.id,
-        method: confirmDialog.method,
-        amount: confirmDialog.bill.total_amount,
-      })
-      toast.success('Đã ghi nhận thanh toán')
-      setConfirmDialog({ isOpen: false, bill: null, method: 'cash' })
+      if (confirmDialog.mode === 'pay') {
+        await apiPost('/api/payments', {
+          invoice_id: confirmDialog.bill.id,
+          method: confirmDialog.method,
+          amount: confirmDialog.bill.total_amount,
+        })
+        toast.success('Đã ghi nhận thanh toán')
+      } else if (confirmDialog.mode === 'undo') {
+        await apiPatch('/api/payments', {
+          invoice_id: confirmDialog.bill.id,
+          action: 'undo',
+        })
+        toast.success('Đã hoàn lại (chuyển về chưa thu)')
+      } else if (confirmDialog.mode === 'resubmit') {
+        await apiPatch('/api/payments', {
+          invoice_id: confirmDialog.bill.id,
+          action: 'resubmit',
+          method: confirmDialog.method,
+          amount: confirmDialog.bill.total_amount,
+        })
+        toast.success('Đã cập nhật phương thức thanh toán')
+      }
+
+      setConfirmDialog({ isOpen: false, bill: null, mode: 'pay', method: 'cash' })
       refetch()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Lỗi')
@@ -213,7 +232,12 @@ function PaymentsContent() {
                       size="sm"
                       className="flex-1 h-11"
                       onClick={() =>
-                        setConfirmDialog({ isOpen: true, bill, method: 'cash' })
+                        setConfirmDialog({
+                          isOpen: true,
+                          bill,
+                          mode: 'pay',
+                          method: 'cash',
+                        })
                       }
                     >
                       Tiền mặt
@@ -223,7 +247,12 @@ function PaymentsContent() {
                       variant="secondary"
                       className="flex-1 h-11"
                       onClick={() =>
-                        setConfirmDialog({ isOpen: true, bill, method: 'transfer' })
+                        setConfirmDialog({
+                          isOpen: true,
+                          bill,
+                          mode: 'pay',
+                          method: 'transfer',
+                        })
                       }
                     >
                       Chuyển khoản
@@ -236,6 +265,59 @@ function PaymentsContent() {
                   Đã thanh toán: {new Date(bill.paid_at).toLocaleDateString('vi-VN')}
                 </p>
               )}
+
+              {isPaidStatus(bill.payment_status) && (
+                <div className="flex flex-col gap-2 mt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full h-11"
+                    onClick={() =>
+                      setConfirmDialog({
+                        isOpen: true,
+                        bill,
+                        mode: 'undo',
+                        method: 'cash',
+                      })
+                    }
+                  >
+                    Hoàn lại (chuyển về chưa thu)
+                  </Button>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="h-11"
+                      onClick={() =>
+                        setConfirmDialog({
+                          isOpen: true,
+                          bill,
+                          mode: 'resubmit',
+                          method: 'cash',
+                        })
+                      }
+                    >
+                      Tiền mặt
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="h-11"
+                      onClick={() =>
+                        setConfirmDialog({
+                          isOpen: true,
+                          bill,
+                          mode: 'resubmit',
+                          method: 'transfer',
+                        })
+                      }
+                    >
+                      Chuyển khoản
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}
@@ -244,32 +326,50 @@ function PaymentsContent() {
       <Dialog
         open={confirmDialog.isOpen}
         onOpenChange={(open) =>
-          setConfirmDialog({ isOpen: open, bill: confirmDialog.bill, method: confirmDialog.method })
+          setConfirmDialog({
+            isOpen: open,
+            bill: confirmDialog.bill,
+            mode: confirmDialog.mode,
+            method: confirmDialog.method,
+          })
         }
       >
         <DialogContent className="max-w-sm">
           <DialogHeader>
-            <DialogTitle>Xác nhận thanh toán</DialogTitle>
+            <DialogTitle>
+              {confirmDialog.mode === 'pay' && 'Xác nhận thanh toán'}
+              {confirmDialog.mode === 'undo' && 'Hoàn lại thanh toán?'}
+              {confirmDialog.mode === 'resubmit' && 'Đổi phương thức thanh toán'}
+            </DialogTitle>
           </DialogHeader>
-          <p className="text-center text-muted-foreground">
-            Phòng {confirmDialog.bill?.room?.name} —{' '}
-            {confirmDialog.method === 'cash' ? 'Tiền mặt' : 'Chuyển khoản'}
-          </p>
-          <p className="text-center text-2xl font-bold text-primary">
-            {confirmDialog.bill && formatCurrency(confirmDialog.bill.total_amount)}
-          </p>
+          {confirmDialog.mode !== 'undo' && (
+            <>
+              <p className="text-center text-muted-foreground">
+                Phòng {confirmDialog.bill?.room?.name} —{' '}
+                {confirmDialog.method === 'cash' ? 'Tiền mặt' : 'Chuyển khoản'}
+              </p>
+              <p className="text-center text-2xl font-bold text-primary">
+                {confirmDialog.bill && formatCurrency(confirmDialog.bill.total_amount)}
+              </p>
+            </>
+          )}
+          {confirmDialog.mode === 'undo' && (
+            <p className="text-center text-muted-foreground">
+              Sẽ chuyển hoá đơn phòng về trạng thái <b>Chưa thu</b>.
+            </p>
+          )}
           <DialogFooter className="flex gap-2">
             <Button
               variant="outline"
               className="flex-1 h-11"
               onClick={() =>
-                setConfirmDialog({ isOpen: false, bill: null, method: 'cash' })
+                setConfirmDialog({ isOpen: false, bill: null, mode: 'pay', method: 'cash' })
               }
             >
               Hủy
             </Button>
             <Button className="flex-1 h-11" onClick={confirmPayment}>
-              Xác nhận
+              {confirmDialog.mode === 'undo' ? 'Xác nhận hoàn lại' : 'Xác nhận'}
             </Button>
           </DialogFooter>
         </DialogContent>

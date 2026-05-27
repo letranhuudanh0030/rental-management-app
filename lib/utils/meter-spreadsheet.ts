@@ -34,9 +34,9 @@ export interface MeterRowComputed {
 }
 
 export function parseMeterNumber(value: string): number | null {
-  const trimmed = value.trim()
-  if (!trimmed) return null
-  const n = Number(trimmed)
+  const normalized = value.replace(/\./g, '').replace(/,/g, '').replace(/\s/g, '').trim()
+  if (!normalized) return null
+  const n = Number(normalized)
   return Number.isFinite(n) ? n : null
 }
 
