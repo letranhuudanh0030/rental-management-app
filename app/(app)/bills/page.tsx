@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { FileText, ChevronLeft, ChevronRight, Zap, Droplets, Home } from 'lucide-react'
+import { FileText, ChevronLeft, ChevronRight, Zap, Droplets, Home, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -160,6 +160,13 @@ export default function BillsPage() {
                         Nước ({bill.water_usage} m³)
                       </span>
                       <span>{formatCurrency(bill.water_cost)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="flex items-center gap-2 text-muted-foreground">
+                        <Trash2 className="w-4 h-4 text-red-500" />
+                        Rác
+                      </span>
+                      <span>{formatCurrency(bill.settings.garbage_price)}</span>
                     </div>
                     <div className="flex justify-between font-bold pt-2 border-t">
                       <span>Tổng cộng</span>

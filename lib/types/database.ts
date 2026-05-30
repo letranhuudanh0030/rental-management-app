@@ -10,6 +10,7 @@ export interface LandlordSettings {
   electric_price: number
   water_price: number
   invoice_due_day: number
+  garbage_price: number
   created_at: string
   updated_at: string
 }
@@ -106,6 +107,7 @@ export interface InvoiceWithDetails extends Invoice {
   room?: Room
   tenant?: Tenant | null
   display_status: InvoiceDisplayStatus
+  settings: LandlordSettings
 }
 
 export interface DashboardSummary {

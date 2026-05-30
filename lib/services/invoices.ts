@@ -12,7 +12,8 @@ import type { Invoice, InvoiceWithDetails, LandlordSettings } from '@/lib/types/
 
 export async function enrichInvoices(
   supabase: SupabaseClient,
-  invoices: Invoice[]
+  invoices: Invoice[],
+  settings: LandlordSettings
 ): Promise<InvoiceWithDetails[]> {
   if (invoices.length === 0) return []
 
@@ -35,6 +36,7 @@ export async function enrichInvoices(
       room,
       tenant,
       display_status: getInvoiceDisplayStatus(invoice.payment_status, invoice.due_date),
+      settings,
     }
   })
 }
@@ -110,7 +112,7 @@ export async function generateInvoicesForPeriod(
         rent_amount: rentAmount,
         electric_cost: electricCost,
         water_cost: waterCost,
-        other_fees: 0,
+        other_fees: settings.garbage_price, // tiền rác
       })
 
       return {
@@ -123,8 +125,8 @@ export async function generateInvoicesForPeriod(
         electric_cost: electricCost,
         water_usage: waterUsage,
         water_cost: waterCost,
-        other_fees: 0,
-        total_amount: total,
+        other_fees: settings.garbage_price,
+        total_amount: total ,
         due_date: dueDate,
         payment_status: 'unpaid' as const,
       }

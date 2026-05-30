@@ -28,6 +28,7 @@ export default function SettingsPage() {
         electric_price: settings.electric_price,
         water_price: settings.water_price,
         invoice_due_day: settings.invoice_due_day,
+        garbage_price: settings.garbage_price
       })
       setSettings(updated)
       toast.success('Đã lưu cài đặt')
@@ -94,6 +95,17 @@ export default function SettingsPage() {
                 }
               />
             </div>
+          </div>
+          <div>
+            <Label>Tiền rác</Label>
+            <Input
+                type="number"
+                className="h-12 mt-1"
+                value={settings.garbage_price}
+                onChange={(e) =>
+                  setSettings({ ...settings, garbage_price: Number(e.target.value) })
+                }
+              />
           </div>
           <div>
             <Label>Ngày hạn thanh toán (tháng sau)</Label>

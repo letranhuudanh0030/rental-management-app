@@ -26,6 +26,12 @@ export async function GET(request: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const enriched = await enrichInvoices(supabase, data ?? [])
+  const { data: settings } = await supabase
+    .from('landlord_settings')
+    .select('*')
+    .eq('user_id', user!.id)
+    .single()
+
+  const enriched = await enrichInvoices(supabase, data ?? [], settings)
   return NextResponse.json(enriched)
 }
