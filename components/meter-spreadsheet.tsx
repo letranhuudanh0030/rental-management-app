@@ -31,6 +31,7 @@ import {
   formatDigitsWithDots,
   stripNumberFormatting,
   shiftPeriodMonth,
+  formatCurrency,
 } from '@/lib/utils/format'
 import {
   computeMeterRow,
@@ -371,7 +372,7 @@ export function MeterSpreadsheet({
       ) : (
         <div
           ref={tableRef}
-          className="flex-1 overflow-auto overscroll-x-contain touch-pan-x space-y-3 mt-3"
+          className="px-4 mt-3 space-y-3"
         >
           {/* <table className="w-max min-w-full border-collapse text-sm">
             <thead className="sticky top-0 z-20 bg-muted/95 backdrop-blur-sm">
@@ -548,7 +549,7 @@ export function MeterSpreadsheet({
                           <th className="px-1 py-1 font-medium w-[4.25rem]">Cũ</th>
                           <th className="px-1 py-1 font-medium w-[4.75rem]">Mới</th>
                           <th className="px-1 py-1 font-medium w-[3.25rem] border-r border-border/60">Dùng</th>
-                          <th className="px-1 py-1 font-medium w-[4.75rem]">VNĐ</th>
+                          {/* <th className="px-1 py-1 font-medium w-[4.75rem]">VNĐ</th> */}
                         </tr>
                       </thead>
                       <tbody>
@@ -594,11 +595,11 @@ export function MeterSpreadsheet({
                               ? formatIntegerVi(c.electricUsage)
                               : '—'}
                           </td>
-                          <td className="px-2 py-1.5 text-right text-xs font-semibold tabular-nums whitespace-nowrap">
+                          {/* <td className="px-2 py-1.5 text-right text-xs font-semibold tabular-nums whitespace-nowrap">
                             {c && c.electricCost > 0
                               ? formatShortCurrency(c.electricCost)
                               : '—'}
-                          </td>
+                          </td> */}
                         </tr>
                         <tr key={row.room_id + "_water"}
                           className={cn(
@@ -640,11 +641,11 @@ export function MeterSpreadsheet({
                               ? formatIntegerVi(c.waterUsage)
                               : '—'}
                           </td>
-                          <td className="px-2 py-1.5 text-right text-xs font-semibold tabular-nums whitespace-nowrap">
+                          {/* <td className="px-2 py-1.5 text-right text-xs font-semibold tabular-nums whitespace-nowrap">
                             {c && c.waterCost > 0
                               ? formatShortCurrency(c.waterCost)
                               : '—'}
-                          </td>
+                          </td> */}
                         </tr>
                         <tr
                           className={cn(
@@ -652,12 +653,12 @@ export function MeterSpreadsheet({
                             rowIndex % 2 === 0 ? 'bg-card' : 'bg-muted/30',
                             saved && 'bg-primary/5'
                           )}>
-                          <td colSpan={4} className="px-1 py-2 text-right font-semibold text-xs border-r border-border/60 uppercase">
-                            Thành tiền :
+                          <td colSpan={3} className="px-1 py-2 text-right font-semibold text-xs border-r border-border/60 uppercase">
+                            {`Điện: ${formatShortCurrency(c.electricCost)} + Nước: ${formatShortCurrency(c.waterCost)} =`}
                           </td>
-                          <td className="px-2 py-1.5 text-right text-xs font-semibold tabular-nums whitespace-nowrap">
+                          <td className="px-2 py-1.5 text-center text-xs font-semibold tabular-nums whitespace-nowrap border-r border-border/60">
                             {c && c.totalBill > 0
-                              ? formatShortCurrency(c.totalBill)
+                              ? formatCurrency(c.totalBill)
                               : '—'}
                           </td>
                         </tr>
