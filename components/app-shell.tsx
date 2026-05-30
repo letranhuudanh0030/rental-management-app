@@ -56,7 +56,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <div className={cn('mx-auto', isWidePage ? 'max-w-3xl w-full' : 'max-w-lg')}>
+      <div className="mx-auto max-w-lg">
         {children}
       </div>
 

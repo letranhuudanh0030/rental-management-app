@@ -14,6 +14,9 @@ import {
   Save,
   Zap,
   AlertTriangle,
+  Check,
+  CircleDollarSign,
+  DollarSign,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -38,6 +41,7 @@ import {
 } from '@/lib/utils/meter-spreadsheet'
 import type { MeterInputView } from '@/lib/constants/meter-input'
 import { MeterViewToggle } from '@/components/meter-view-toggle'
+import { Card, CardContent } from './ui/card'
 
 interface RowDraft {
   electricPrevious: string
@@ -296,7 +300,7 @@ export function MeterSpreadsheet({
 
   return (
     <div className="flex flex-col min-h-[calc(100dvh-5rem)] pb-24">
-      <header className="sticky top-0 z-30 bg-background border-b border-border px-3 pt-3 pb-2">
+      <header className="sticky top-0 z-30 bg-background border-b border-border px-3 pt-3 pb-3">
         <div className="flex items-center justify-between gap-2 mb-2">
           <h1 className="text-lg font-bold shrink-0">Ghi điện nước</h1>
           <Button
@@ -367,9 +371,9 @@ export function MeterSpreadsheet({
       ) : (
         <div
           ref={tableRef}
-          className="flex-1 overflow-auto overscroll-x-contain touch-pan-x"
+          className="flex-1 overflow-auto overscroll-x-contain touch-pan-x space-y-3 mt-3"
         >
-          <table className="w-max min-w-full border-collapse text-sm">
+          {/* <table className="w-max min-w-full border-collapse text-sm">
             <thead className="sticky top-0 z-20 bg-muted/95 backdrop-blur-sm">
               <tr className="border-b border-border">
                 <th
@@ -507,7 +511,163 @@ export function MeterSpreadsheet({
                 )
               })}
             </tbody>
-          </table>
+          </table> */}
+          {rows.map((row, rowIndex) => {
+            const d = draft[row.room_id]
+            if (!d) return null
+            const c = computedByRoom[row.room_id]
+            const saved = !!row.reading_id
+
+            return (
+              <Card
+                  key={row.room_id}
+                  className={saved ? 'border-primary/50 bg-primary/5' : ''}
+                >
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
+                        <span className="font-bold">{row.room_name}</span>
+                      </div>
+                      <div>
+                        <p className="font-medium">{row.tenant_name ?? '—'}</p>
+                        <p className="text-xs text-muted-foreground">{row.tenant_phone}</p>
+                      </div>
+                    </div>
+                    {saved && (
+                      <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+                        <Check className="w-4 h-4 text-primary-foreground" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-3">
+                    <table className="w-max min-w-full border-collapse text-sm">
+                      <thead className="top-0 z-20 bg-muted/95 backdrop-blur-sm">
+                        <tr className="border-b border-border text-[12px] uppercase tracking-wide text-muted-foreground">
+                          <th className="px-1 py-1 font-medium w-[4.25rem]" />
+                          <th className="px-1 py-1 font-medium w-[4.25rem]">Cũ</th>
+                          <th className="px-1 py-1 font-medium w-[4.75rem]">Mới</th>
+                          <th className="px-1 py-1 font-medium w-[3.25rem] border-r border-border/60">Dùng</th>
+                          <th className="px-1 py-1 font-medium w-[4.75rem]">VNĐ</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr
+                          key={row.room_id + "_electric"}
+                          className={cn(
+                            'border-b border-border/80',
+                            rowIndex % 2 === 0 ? 'bg-card' : 'bg-muted/30',
+                            saved && 'bg-primary/5'
+                          )}
+                        >
+                          <td className="px-1 py-2 text-center font-semibold text-xs border-r border-border/60">
+                            <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-400">
+                              <Zap className="w-3 h-3" /> Điện
+                            </span>
+                          </td>
+                          <MeterCell
+                            id={cellId(row.room_id, 'electricPrevious')}
+                            value={d.electricPrevious}
+                            onChange={(v) => updateDraft(row.room_id, 'electricPrevious', v)}
+                            onKeyDown={(e) =>
+                              handleKeyDown(e, row.room_id, 'electricPrevious')
+                            }
+                            muted
+                          />
+                          <MeterCell
+                            id={cellId(row.room_id, 'electricCurrent')}
+                            value={d.electricCurrent}
+                            onChange={(v) => updateDraft(row.room_id, 'electricCurrent', v)}
+                            onKeyDown={(e) =>
+                              handleKeyDown(e, row.room_id, 'electricCurrent')
+                            }
+                            alert={c?.electricAlert}
+                            primary
+                          />
+                          <td
+                            className={cn(
+                              'px-1 py-1.5 text-center text-xs tabular-nums border-r border-border/60',
+                              alertCellClass(c?.electricAlert ?? 'none')
+                            )}
+                          >
+                            {c && parseMeterNumber(d.electricCurrent) !== null
+                              ? formatIntegerVi(c.electricUsage)
+                              : '—'}
+                          </td>
+                          <td className="px-2 py-1.5 text-right text-xs font-semibold tabular-nums whitespace-nowrap">
+                            {c && c.electricCost > 0
+                              ? formatShortCurrency(c.electricCost)
+                              : '—'}
+                          </td>
+                        </tr>
+                        <tr key={row.room_id + "_water"}
+                          className={cn(
+                            'border-b border-border/80',
+                            rowIndex % 2 === 0 ? 'bg-card' : 'bg-muted/30',
+                            saved && 'bg-primary/5'
+                          )}>
+                          <td className="px-1 py-2 text-center font-semibold text-xs border-r border-border/60">
+                            <span className="inline-flex items-center gap-1 text-blue-700 dark:text-blue-400">
+                              <Droplets className="w-3 h-3" /> Nước
+                            </span>
+                          </td>
+                          <MeterCell
+                            id={cellId(row.room_id, 'waterPrevious')}
+                            value={d.waterPrevious}
+                            onChange={(v) => updateDraft(row.room_id, 'waterPrevious', v)}
+                            onKeyDown={(e) =>
+                              handleKeyDown(e, row.room_id, 'waterPrevious')
+                            }
+                            muted
+                          />
+                          <MeterCell
+                            id={cellId(row.room_id, 'waterCurrent')}
+                            value={d.waterCurrent}
+                            onChange={(v) => updateDraft(row.room_id, 'waterCurrent', v)}
+                            onKeyDown={(e) =>
+                              handleKeyDown(e, row.room_id, 'waterCurrent')
+                            }
+                            alert={c?.waterAlert}
+                            primary
+                          />
+                          <td
+                            className={cn(
+                              'px-1 py-1.5 text-center text-xs tabular-nums border-r border-border/60',
+                              alertCellClass(c?.waterAlert ?? 'none')
+                            )}
+                          >
+                            {c && parseMeterNumber(d.waterCurrent) !== null
+                              ? formatIntegerVi(c.waterUsage)
+                              : '—'}
+                          </td>
+                          <td className="px-2 py-1.5 text-right text-xs font-semibold tabular-nums whitespace-nowrap">
+                            {c && c.waterCost > 0
+                              ? formatShortCurrency(c.waterCost)
+                              : '—'}
+                          </td>
+                        </tr>
+                        <tr
+                          className={cn(
+                            'border-b border-border/80',
+                            rowIndex % 2 === 0 ? 'bg-card' : 'bg-muted/30',
+                            saved && 'bg-primary/5'
+                          )}>
+                          <td colSpan={4} className="px-1 py-2 text-right font-semibold text-xs border-r border-border/60 uppercase">
+                            Thành tiền :
+                          </td>
+                          <td className="px-2 py-1.5 text-right text-xs font-semibold tabular-nums whitespace-nowrap">
+                            {c && c.totalBill > 0
+                              ? formatShortCurrency(c.totalBill)
+                              : '—'}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       )}
 
