@@ -315,7 +315,7 @@ export function MeterSpreadsheet({
           </Button>
         </div>
 
-        <MeterViewToggle value={view} onChange={onViewChange} className="mb-2" />
+        {/* <MeterViewToggle value={view} onChange={onViewChange} className="mb-2" /> */}
 
         <div className="flex items-center justify-center gap-3">
           <button
@@ -521,9 +521,9 @@ export function MeterSpreadsheet({
 
             return (
               <Card
-                  key={row.room_id}
-                  className={saved ? 'border-primary/50 bg-primary/5' : ''}
-                >
+                key={row.room_id}
+                className={saved ? 'border-primary/50 bg-primary/5' : ''}
+              >
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
@@ -541,130 +541,72 @@ export function MeterSpreadsheet({
                       </div>
                     )}
                   </div>
-                  <div className="space-y-3">
-                    <table className="w-max min-w-full border-collapse text-sm">
-                      <thead className="top-0 z-20 bg-muted/95 backdrop-blur-sm">
-                        <tr className="border-b border-border text-[12px] uppercase tracking-wide text-muted-foreground">
-                          <th className="px-1 py-1 font-medium w-[4.25rem]" />
-                          <th className="px-1 py-1 font-medium w-[4.25rem]">Cũ</th>
-                          <th className="px-1 py-1 font-medium w-[4.75rem]">Mới</th>
-                          <th className="px-1 py-1 font-medium w-[3.25rem] border-r border-border/60">Dùng</th>
-                          {/* <th className="px-1 py-1 font-medium w-[4.75rem]">VNĐ</th> */}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr
-                          key={row.room_id + "_electric"}
-                          className={cn(
-                            'border-b border-border/80',
-                            rowIndex % 2 === 0 ? 'bg-card' : 'bg-muted/30',
-                            saved && 'bg-primary/5'
-                          )}
-                        >
-                          <td className="px-1 py-2 text-center font-semibold text-xs border-r border-border/60">
-                            <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-400">
-                              <Zap className="w-3 h-3" /> Điện
-                            </span>
-                          </td>
-                          <MeterCell
-                            id={cellId(row.room_id, 'electricPrevious')}
-                            value={d.electricPrevious}
-                            onChange={(v) => updateDraft(row.room_id, 'electricPrevious', v)}
-                            onKeyDown={(e) =>
-                              handleKeyDown(e, row.room_id, 'electricPrevious')
-                            }
-                            muted
-                          />
-                          <MeterCell
-                            id={cellId(row.room_id, 'electricCurrent')}
-                            value={d.electricCurrent}
-                            onChange={(v) => updateDraft(row.room_id, 'electricCurrent', v)}
-                            onKeyDown={(e) =>
-                              handleKeyDown(e, row.room_id, 'electricCurrent')
-                            }
-                            alert={c?.electricAlert}
-                            primary
-                          />
-                          <td
-                            className={cn(
-                              'px-1 py-1.5 text-center text-xs tabular-nums border-r border-border/60',
-                              alertCellClass(c?.electricAlert ?? 'none')
-                            )}
-                          >
-                            {c && parseMeterNumber(d.electricCurrent) !== null
-                              ? formatIntegerVi(c.electricUsage)
-                              : '—'}
-                          </td>
-                          {/* <td className="px-2 py-1.5 text-right text-xs font-semibold tabular-nums whitespace-nowrap">
-                            {c && c.electricCost > 0
-                              ? formatShortCurrency(c.electricCost)
-                              : '—'}
-                          </td> */}
-                        </tr>
-                        <tr key={row.room_id + "_water"}
-                          className={cn(
-                            'border-b border-border/80',
-                            rowIndex % 2 === 0 ? 'bg-card' : 'bg-muted/30',
-                            saved && 'bg-primary/5'
-                          )}>
-                          <td className="px-1 py-2 text-center font-semibold text-xs border-r border-border/60">
-                            <span className="inline-flex items-center gap-1 text-blue-700 dark:text-blue-400">
-                              <Droplets className="w-3 h-3" /> Nước
-                            </span>
-                          </td>
-                          <MeterCell
-                            id={cellId(row.room_id, 'waterPrevious')}
-                            value={d.waterPrevious}
-                            onChange={(v) => updateDraft(row.room_id, 'waterPrevious', v)}
-                            onKeyDown={(e) =>
-                              handleKeyDown(e, row.room_id, 'waterPrevious')
-                            }
-                            muted
-                          />
-                          <MeterCell
-                            id={cellId(row.room_id, 'waterCurrent')}
-                            value={d.waterCurrent}
-                            onChange={(v) => updateDraft(row.room_id, 'waterCurrent', v)}
-                            onKeyDown={(e) =>
-                              handleKeyDown(e, row.room_id, 'waterCurrent')
-                            }
-                            alert={c?.waterAlert}
-                            primary
-                          />
-                          <td
-                            className={cn(
-                              'px-1 py-1.5 text-center text-xs tabular-nums border-r border-border/60',
-                              alertCellClass(c?.waterAlert ?? 'none')
-                            )}
-                          >
-                            {c && parseMeterNumber(d.waterCurrent) !== null
-                              ? formatIntegerVi(c.waterUsage)
-                              : '—'}
-                          </td>
-                          {/* <td className="px-2 py-1.5 text-right text-xs font-semibold tabular-nums whitespace-nowrap">
-                            {c && c.waterCost > 0
-                              ? formatShortCurrency(c.waterCost)
-                              : '—'}
-                          </td> */}
-                        </tr>
-                        <tr
-                          className={cn(
-                            'border-b border-border/80',
-                            rowIndex % 2 === 0 ? 'bg-card' : 'bg-muted/30',
-                            saved && 'bg-primary/5'
-                          )}>
-                          <td colSpan={3} className="px-1 py-2 text-right font-semibold text-xs border-r border-border/60 uppercase">
-                            {`Điện: ${formatShortCurrency(c.electricCost)} + Nước: ${formatShortCurrency(c.waterCost)} =`}
-                          </td>
-                          <td className="px-2 py-1.5 text-center text-xs font-semibold tabular-nums whitespace-nowrap border-r border-border/60">
-                            {c && c.totalBill > 0
-                              ? formatCurrency(c.totalBill)
-                              : '—'}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="flex items-center gap-2 text-sm font-medium mb-2">
+                        <Zap className="w-4 h-4 text-amber-500" />
+                        Điện
+                      </label>
+                      <p className="text-xs text-muted-foreground mb-1">
+                        Số cũ: {d.electricPrevious}
+                      </p>
+                      <MeterCell
+                        id={cellId(row.room_id, 'electricCurrent')}
+                        value={d.electricCurrent}
+                        onChange={(v) => updateDraft(row.room_id, 'electricCurrent', v)}
+                        onKeyDown={(e) =>
+                          handleKeyDown(e, row.room_id, 'electricCurrent')
+                        }
+                        alert={c?.electricAlert}
+                        primary
+                      />
+                      {c.electricUsage > 0 && (
+                        <p className="text-xs text-primary mt-1 font-medium">
+                          Tiêu thụ: {c.electricUsage} kWh
+                        </p>
+                      )}
+                      <p className="text-xs text-primary mt-1 font-medium">
+                        VNĐ: {c && c.electricCost > 0
+                          ? formatCurrency(c.electricCost)
+                          : '—'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="flex items-center gap-2 text-sm font-medium mb-2">
+                        <Droplets className="w-4 h-4 text-blue-500" />
+                        Nước
+                      </label>
+                      <p className="text-xs text-muted-foreground mb-1">
+                        Số cũ: {d.waterPrevious}
+                      </p>
+                      <MeterCell
+                        id={cellId(row.room_id, 'waterCurrent')}
+                        value={d.waterCurrent}
+                        onChange={(v) => updateDraft(row.room_id, 'waterCurrent', v)}
+                        onKeyDown={(e) =>
+                          handleKeyDown(e, row.room_id, 'waterCurrent')
+                        }
+                        alert={c?.waterAlert}
+                        primary
+                      />
+                      {c.waterUsage > 0 && (
+                        <p className="text-xs text-blue-600 mt-1 font-medium">
+                          Tiêu thụ: {c.waterUsage} m³
+                        </p>
+                      )}
+                      <p className="text-xs text-blue-600 mt-1 font-medium">
+                        VNĐ: {c && c.waterCost > 0
+                          ? formatCurrency(c.waterCost)
+                          : '—'}
+                      </p>
+                    </div>
                   </div>
+                  <hr className="my-2" />
+                  <p className="text-sm text-red-500 font-bold text-left uppercase">
+                    Tổng tiền: {c && c.totalBill > 0
+                        ? formatCurrency(c.totalBill)
+                        : '—'}
+                  </p>
                 </CardContent>
               </Card>
             )
@@ -724,7 +666,7 @@ function MeterCell({
   const displayValue = focused ? raw : raw ? formatDigitsWithDots(raw) : ''
 
   return (
-    <td className="px-0.5 py-1">
+    <div className="px-0.5 py-1">
       <input
         id={id}
         type="text"
@@ -740,16 +682,17 @@ function MeterCell({
         }}
         onBlur={() => setFocused(false)}
         className={cn(
-          'w-full min-w-0 rounded-md border text-center font-semibold tabular-nums',
+          'w-full min-w-0 rounded-md border text-left font-semibold tabular-nums',
           'outline-none transition-[box-shadow,border-color]',
           'focus-visible:ring-[3px] focus-visible:ring-ring/40 focus-visible:border-ring',
           muted
             ? 'h-10 text-sm bg-muted/50 text-muted-foreground border-transparent'
             : 'h-11 text-base bg-background border-input',
           primary && 'ring-1 ring-primary/20',
+          'px-3 py-1',
           alertInputClass(alert)
         )}
       />
-    </td>
+    </div>
   )
 }
