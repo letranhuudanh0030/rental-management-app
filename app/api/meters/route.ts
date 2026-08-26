@@ -52,7 +52,10 @@ export async function GET(request: Request) {
   const rows: MeterBulkRow[] =
     rooms?.map((room) => {
       const contract = contracts?.find((c) => c.room_id === room.id)
-      const tenant = contract?.tenants as { name: string; phone: string } | null
+      const tenantData = contract?.tenants
+      const tenant = Array.isArray(tenantData)
+        ? tenantData[0] ?? null
+        : tenantData
       const current = currentReadings?.find((r) => r.room_id === room.id)
       const prev = prevReadings?.find((r) => r.room_id === room.id)
 

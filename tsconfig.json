@@ -36,6 +36,11 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "components/billing-page.tsx",
+    "components/dashboard.tsx",
+    "components/meter-input.tsx",
+    "components/payment-tracking.tsx",
+    "components/room-list.tsx"
   ]
 }

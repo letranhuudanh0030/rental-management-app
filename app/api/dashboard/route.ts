@@ -19,7 +19,7 @@ export async function GET() {
   ] = await Promise.all([
     supabase
       .from('landlord_settings')
-      .select('property_name')
+      .select('*')
       .eq('user_id', user!.id)
       .single(),
     supabase.from('rooms').select('id, status').eq('user_id', user!.id),
@@ -65,7 +65,9 @@ export async function GET() {
     }
   }
 
-  const recent = await enrichInvoices(supabase, (invoices ?? []).slice(0, 6))
+  const recent = settings
+    ? await enrichInvoices(supabase, (invoices ?? []).slice(0, 6), settings)
+    : []
 
   const summary: DashboardSummary = {
     property_name: settings?.property_name ?? 'Nhà trọ',

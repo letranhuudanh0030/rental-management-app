@@ -32,7 +32,7 @@ export function calculateInvoiceTotal(parts: {
 export function computeDueDate(periodMonth: string, dueDay: number): string {
   const [year, month] = periodMonth.slice(0, 10).split('-').map(Number)
   const day = Math.min(Math.max(dueDay, 1), 28)
-  const due = new Date(year, month, day)
+  const due = new Date(Date.UTC(year, month, day))
   return due.toISOString().slice(0, 10)
 }
 
