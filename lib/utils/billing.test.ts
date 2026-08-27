@@ -5,6 +5,7 @@ import {
   calculateUtilityCost,
   calculateWaterUsage,
   computeDueDate,
+  isContractValidForPeriod,
   previousPeriodMonth,
 } from './billing'
 import { getInvoiceDisplayStatus } from './format'
@@ -48,6 +49,13 @@ describe('billing calculations', () => {
 
   it('gets the previous billing period across year boundaries', () => {
     expect(previousPeriodMonth('2026-01-01')).toBe('2025-12-01')
+  })
+
+  it('checks whether a contract overlaps a billing period', () => {
+    expect(isContractValidForPeriod('2026-01-15', null, '2026-01-01')).toBe(true)
+    expect(isContractValidForPeriod('2026-02-01', null, '2026-01-01')).toBe(false)
+    expect(isContractValidForPeriod('2025-01-01', '2025-12-31', '2026-01-01')).toBe(false)
+    expect(isContractValidForPeriod('2025-01-01', '2026-01-10', '2026-01-01')).toBe(true)
   })
 
   it('marks unpaid invoices overdue only after the due date', () => {

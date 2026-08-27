@@ -10,6 +10,7 @@ import {
   Gauge,
   Receipt,
   CreditCard,
+  FileText,
   LogOut,
   MessageSquare,
 } from 'lucide-react'
@@ -29,6 +30,7 @@ const tabs = [
   { href: '/meters', label: 'Điện nước', icon: Gauge },
   { href: '/bills', label: 'Hóa đơn', icon: Receipt },
   { href: '/payments', label: 'Thu tiền', icon: CreditCard },
+  { href: '/contracts', label: 'Hợp đồng', icon: FileText },
 ]
 
 export function AppShell({ children }: { children: React.ReactNode }) {

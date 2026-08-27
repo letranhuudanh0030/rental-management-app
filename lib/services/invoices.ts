@@ -5,6 +5,7 @@ import {
   calculateUtilityCost,
   calculateWaterUsage,
   computeDueDate,
+  isContractValidForPeriod,
   previousPeriodMonth,
 } from '@/lib/utils/billing'
 import { getInvoiceDisplayStatus } from '@/lib/utils/format'
@@ -61,7 +62,7 @@ export async function generateInvoicesForPeriod(
 
   const { data: contracts } = await supabase
     .from('contracts')
-    .select('id, room_id, monthly_rent')
+    .select('id, room_id, monthly_rent, start_date, end_date')
     .eq('user_id', userId)
     .eq('is_active', true)
     .in('room_id', roomIds)
@@ -92,8 +93,14 @@ export async function generateInvoicesForPeriod(
 
   const rows = occupiedRooms
     .filter((room) => !existingRoomIds.has(room.id))
-    .map((room) => {
-      const contract = contracts?.find((c) => c.room_id === room.id)
+    .flatMap((room) => {
+      const contract = contracts?.find(
+        (candidate) =>
+          candidate.room_id === room.id &&
+          isContractValidForPeriod(candidate.start_date, candidate.end_date, periodMonth)
+      )
+      if (!contract) return []
+
       const reading = readings?.find((r) => r.room_id === room.id)
       const prev = prevReadings?.find((r) => r.room_id === room.id)
 
@@ -106,7 +113,7 @@ export async function generateInvoicesForPeriod(
       const waterUsage = calculateWaterUsage(Number(waterPrev), Number(waterCurr))
       const electricCost = calculateUtilityCost(electricUsage, settings.electric_price)
       const waterCost = calculateUtilityCost(waterUsage, settings.water_price)
-      const rentAmount = contract?.monthly_rent ?? room.base_rent
+      const rentAmount = contract!.monthly_rent
 
       const total = calculateInvoiceTotal({
         rent_amount: rentAmount,
@@ -115,10 +122,10 @@ export async function generateInvoicesForPeriod(
         other_fees: settings.garbage_price, // tiền rác
       })
 
-      return {
+      return [{
         user_id: userId,
         room_id: room.id,
-        contract_id: contract?.id ?? null,
+        contract_id: contract.id,
         period_month: periodMonth,
         rent_amount: rentAmount,
         electric_usage: electricUsage,
@@ -129,7 +136,7 @@ export async function generateInvoicesForPeriod(
         total_amount: total ,
         due_date: dueDate,
         payment_status: 'unpaid' as const,
-      }
+      }]
     })
 
   if (rows.length === 0) {

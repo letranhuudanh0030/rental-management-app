@@ -2,6 +2,7 @@ export type RoomStatus = 'occupied' | 'vacant' | 'maintenance'
 export type PaymentStatus = 'unpaid' | 'paid_cash' | 'paid_transfer'
 export type PaymentMethod = 'cash' | 'transfer'
 export type InvoiceDisplayStatus = 'unpaid' | 'overdue' | 'paid_cash' | 'paid_transfer'
+export type ContractStatus = 'draft' | 'active' | 'terminated' | 'expired' | 'cancelled'
 
 export interface LandlordSettings {
   id: string
@@ -49,6 +50,11 @@ export interface Contract {
   monthly_rent: number
   deposit: number
   is_active: boolean
+  status: ContractStatus
+  termination_date: string | null
+  termination_reason: string | null
+  notice_date: string | null
+  renewed_from_contract_id: string | null
   created_at: string
   updated_at: string
 }
@@ -101,6 +107,14 @@ export interface Payment {
 export interface RoomWithTenant extends Room {
   tenant?: Tenant | null
   contract?: Contract | null
+}
+
+export interface ContractHistory {
+  contract: Contract
+  room: Pick<Room, 'id' | 'name' | 'floor'> | null
+  duration_months: number
+  total_paid: number
+  last_invoice_date: string | null
 }
 
 export interface InvoiceWithDetails extends Invoice {
