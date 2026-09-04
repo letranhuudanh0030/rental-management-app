@@ -63,7 +63,7 @@ export async function PATCH(request: Request) {
     )
   }
 
-  const { invoice_id, action, method, notes, amount } = parsed.data
+  const { invoice_id, action, method, notes, amount, reason } = parsed.data
 
   const { data: invoice, error: invoiceError } = await supabase
     .from('invoices')
@@ -79,6 +79,7 @@ export async function PATCH(request: Request) {
   if (action === 'undo') {
     const { data, error } = await supabase.rpc('reverse_invoice_payment', {
       p_invoice_id: invoice_id,
+      p_reason: reason ?? null,
     })
     if (error) return NextResponse.json({ error: error.message }, { status: 409 })
     return NextResponse.json(data)

@@ -1,6 +1,7 @@
 export type RoomStatus = 'occupied' | 'vacant' | 'maintenance'
 export type PaymentStatus = 'unpaid' | 'paid_cash' | 'paid_transfer'
 export type PaymentMethod = 'cash' | 'transfer'
+export type PaymentRecordStatus = 'active' | 'reversed'
 export type InvoiceDisplayStatus = 'unpaid' | 'overdue' | 'paid_cash' | 'paid_transfer'
 export type ContractStatus = 'draft' | 'active' | 'terminated' | 'expired' | 'cancelled'
 
@@ -93,15 +94,31 @@ export interface Invoice {
   updated_at: string
 }
 
+export interface InvoiceLine {
+  id: string
+  user_id: string
+  invoice_id: string
+  line_type: 'rent' | 'electricity' | 'water' | 'garbage' | 'other'
+  description: string
+  quantity: number
+  unit_price: number
+  amount: number
+  created_at: string
+}
+
 export interface Payment {
   id: string
   user_id: string
   invoice_id: string
   amount: number
   method: PaymentMethod
+  status: PaymentRecordStatus
   paid_at: string
   notes: string | null
   created_at: string
+  reversed_at: string | null
+  reversed_by: string | null
+  reversal_reason: string | null
 }
 
 export interface RoomWithTenant extends Room {

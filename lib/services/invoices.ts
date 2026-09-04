@@ -136,6 +136,12 @@ export async function generateInvoicesForPeriod(
         total_amount: total ,
         due_date: dueDate,
         payment_status: 'unpaid' as const,
+        lines: [
+          { line_type: 'rent', description: 'Tiền thuê phòng', quantity: 1, unit_price: rentAmount, amount: rentAmount },
+          { line_type: 'electricity', description: 'Tiền điện', quantity: electricUsage, unit_price: settings.electric_price, amount: electricCost },
+          { line_type: 'water', description: 'Tiền nước', quantity: waterUsage, unit_price: settings.water_price, amount: waterCost },
+          { line_type: 'garbage', description: 'Tiền rác', quantity: 1, unit_price: settings.garbage_price, amount: settings.garbage_price },
+        ],
       }]
     })
 
@@ -143,8 +149,14 @@ export async function generateInvoicesForPeriod(
     return { created: 0, skipped: existingRoomIds.size }
   }
 
-  const { error } = await supabase.from('invoices').insert(rows)
-  if (error) throw error
+  for (const row of rows) {
+    const { lines, ...invoice } = row
+    const { error } = await supabase.rpc('create_invoice_with_lines', {
+      p_invoice: invoice,
+      p_lines: lines,
+    })
+    if (error) throw error
+  }
 
   return { created: rows.length, skipped: existingRoomIds.size }
 }

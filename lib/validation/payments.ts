@@ -15,6 +15,7 @@ export const updatePaymentSchema = z.object({
   method: paymentMethodSchema.optional(),
   notes: z.string().nullable().optional(),
   amount: z.number().int().positive().optional(),
+  reason: z.string().trim().max(500).nullable().optional(),
 })
 
 export function getValidationMessage(error: z.ZodError): string {
