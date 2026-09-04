@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { BarChart3, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
+import { BarChart3, ChevronLeft, ChevronRight, Download, Loader2 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useFetch } from '@/hooks/use-fetch'
@@ -17,6 +17,8 @@ type OccupancyResponse = {
   vacant_rooms?: number
   maintenance_rooms?: number
 }
+type ProfitRow = { revenue: number; expenses: number; profit: number }
+type ProfitResponse = { data: ProfitRow[] }
 
 export default function ReportsPage() {
   const currentMonth = currentPeriodMonth()
@@ -26,6 +28,7 @@ export default function ReportsPage() {
   const { data: revenue, loading: revenueLoading } = useFetch<RevenueResponse>(revenueUrl, [fromMonth, toMonth])
   const { data: outstanding, loading: outstandingLoading } = useFetch<OutstandingResponse>('/api/reports/outstanding')
   const { data: occupancy, loading: occupancyLoading } = useFetch<OccupancyResponse>('/api/reports/occupancy')
+  const { data: profit, loading: profitLoading } = useFetch<ProfitResponse>(`/api/reports/profit?from=${fromMonth}&to=${toMonth}`, [fromMonth, toMonth])
 
   const revenueTotal = useMemo(
     () => (revenue?.data ?? []).reduce((sum, row) => sum + Number(row.revenue), 0),
@@ -44,14 +47,24 @@ export default function ReportsPage() {
   const occupancyRate = occupancy?.total_rooms
     ? Math.round(((occupancy.occupied_rooms ?? 0) / occupancy.total_rooms) * 100)
     : 0
-  const loading = revenueLoading || outstandingLoading || occupancyLoading
+  const loading = revenueLoading || outstandingLoading || occupancyLoading || profitLoading
+  const expenseTotal = (profit?.data ?? []).reduce((sum, row) => sum + Number(row.expenses), 0)
+  const profitTotal = (profit?.data ?? []).reduce((sum, row) => sum + Number(row.profit), 0)
 
   return (
     <div className="pb-6">
       <header className="px-4 pt-4 pb-3 border-b">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
           <BarChart3 className="w-5 h-5 text-primary" />
           <h1 className="text-xl font-bold">Báo cáo</h1>
+          </div>
+          <a
+            href={`/api/reports/export?type=profit&from=${fromMonth}&to=${toMonth}`}
+            className="inline-flex items-center justify-center rounded-md border px-3 py-2 text-sm font-medium hover:bg-accent"
+          >
+            <Download className="w-4 h-4 mr-2" /> Xuất CSV
+          </a>
         </div>
         <div className="flex items-center justify-between gap-2 mt-4">
           <Button variant="outline" size="icon" onClick={() => setFromMonth(shiftPeriodMonth(fromMonth, -1))} aria-label="Kỳ trước">
@@ -71,6 +84,8 @@ export default function ReportsPage() {
         <Card><CardContent className="p-4"><p className="text-sm text-muted-foreground">Tổng công nợ</p><p className="text-xl font-bold mt-1">{formatCurrency(debtTotal)}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-sm text-muted-foreground">Nợ quá hạn</p><p className="text-xl font-bold text-destructive mt-1">{formatCurrency(overdueTotal)}</p></CardContent></Card>
         <Card><CardContent className="p-4"><p className="text-sm text-muted-foreground">Tỷ lệ lấp đầy</p><p className="text-xl font-bold mt-1">{occupancyRate}%</p><p className="text-xs text-muted-foreground">{occupancy?.occupied_rooms ?? 0}/{occupancy?.total_rooms ?? 0} phòng</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-sm text-muted-foreground">Chi phí kỳ chọn</p><p className="text-xl font-bold mt-1">{formatCurrency(expenseTotal)}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-sm text-muted-foreground">Lợi nhuận kỳ chọn</p><p className="text-xl font-bold text-primary mt-1">{formatCurrency(profitTotal)}</p></CardContent></Card>
       </div>
 
       <section className="px-4">

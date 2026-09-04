@@ -1,11 +1,14 @@
 'use client'
 
 import { useState } from 'react'
-import { FileText, ChevronLeft, ChevronRight } from 'lucide-react'
+import { FileText, ChevronLeft, ChevronRight, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useFetch, apiPost } from '@/hooks/use-fetch'
 import type { InvoiceWithDetails } from '@/lib/types/database'
 import {
@@ -21,6 +24,10 @@ import {
 export default function BillsPage() {
   const [periodMonth, setPeriodMonth] = useState(currentPeriodMonth())
   const [selectedBill, setSelectedBill] = useState<string | null>(null)
+  const [correctionBill, setCorrectionBill] = useState<InvoiceWithDetails | null>(null)
+  const [correctionReason, setCorrectionReason] = useState('')
+  const [correctionForm, setCorrectionForm] = useState({ rent: 0, electric: 0, water: 0, other: 0 })
+  const [correcting, setCorrecting] = useState(false)
   const [generating, setGenerating] = useState(false)
 
   const { data: bills, loading, refetch } = useFetch<InvoiceWithDetails[]>(
@@ -29,7 +36,9 @@ export default function BillsPage() {
   )
 
   const monthBills = bills ?? []
-  const totalAmount = monthBills.reduce((sum, b) => sum + b.total_amount, 0)
+  const totalAmount = monthBills
+    .filter((b) => b.payment_status !== 'void')
+    .reduce((sum, b) => sum + b.total_amount, 0)
   const paidAmount = monthBills
     .filter((b) => isPaidStatus(b.payment_status))
     .reduce((sum, b) => sum + b.total_amount, 0)
@@ -47,6 +56,63 @@ export default function BillsPage() {
       toast.error(e instanceof Error ? e.message : 'Lỗi')
     } finally {
       setGenerating(false)
+    }
+  }
+
+  const handleVoid = async (invoiceId: string) => {
+    const reason = window.prompt('Lý do hủy hóa đơn')
+    if (!reason?.trim()) return
+
+    try {
+      await apiPost(`/api/invoices/${invoiceId}/void`, { reason })
+      await refetch()
+      toast.success('Đã hủy hóa đơn')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Không thể hủy hóa đơn')
+    }
+  }
+
+  const openCorrection = (bill: InvoiceWithDetails) => {
+    setCorrectionBill(bill)
+    setCorrectionReason('')
+    setCorrectionForm({ rent: bill.rent_amount, electric: bill.electric_cost, water: bill.water_cost, other: bill.other_fees })
+  }
+
+  const handleCorrection = async () => {
+    if (!correctionBill || !correctionReason.trim()) return
+    const total = correctionForm.rent + correctionForm.electric + correctionForm.water + correctionForm.other
+    const lines = [
+      { line_type: 'rent', description: 'Tiền thuê phòng', quantity: 1, unit_price: correctionForm.rent, amount: correctionForm.rent },
+      { line_type: 'electricity', description: `Tiền điện (${correctionBill.electric_usage} kWh)`, quantity: correctionBill.electric_usage, unit_price: correctionBill.electric_usage ? Math.round(correctionForm.electric / correctionBill.electric_usage) : 0, amount: correctionForm.electric },
+      { line_type: 'water', description: `Tiền nước (${correctionBill.water_usage} m³)`, quantity: correctionBill.water_usage, unit_price: correctionBill.water_usage ? Math.round(correctionForm.water / correctionBill.water_usage) : 0, amount: correctionForm.water },
+      { line_type: 'garbage', description: 'Tiền rác', quantity: 1, unit_price: correctionForm.other, amount: correctionForm.other },
+    ]
+    setCorrecting(true)
+    try {
+      await apiPost(`/api/invoices/${correctionBill.id}/correct`, {
+        reason: correctionReason,
+        invoice: {
+          room_id: correctionBill.room_id,
+          contract_id: correctionBill.contract_id,
+          period_month: correctionBill.period_month,
+          rent_amount: correctionForm.rent,
+          electric_usage: correctionBill.electric_usage,
+          electric_cost: correctionForm.electric,
+          water_usage: correctionBill.water_usage,
+          water_cost: correctionForm.water,
+          other_fees: correctionForm.other,
+          total_amount: total,
+          due_date: correctionBill.due_date,
+        },
+        lines,
+      })
+      setCorrectionBill(null)
+      await refetch()
+      toast.success('Đã điều chỉnh hóa đơn')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Không thể điều chỉnh hóa đơn')
+    } finally {
+      setCorrecting(false)
     }
   }
 
@@ -140,6 +206,16 @@ export default function BillsPage() {
                 </div>
                 {isSelected && (
                   <div className="mt-4 pt-4 border-t space-y-2">
+                    {bill.payment_status === 'unpaid' && (
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" className="gap-2" onClick={(event) => { event.stopPropagation(); openCorrection(bill) }}>
+                          Điều chỉnh
+                        </Button>
+                        <Button variant="outline" size="sm" className="gap-2" onClick={(event) => { event.stopPropagation(); handleVoid(bill.id) }}>
+                          <XCircle className="w-4 h-4" /> Hủy hóa đơn
+                        </Button>
+                      </div>
+                    )}
                     {(bill.lines?.length ? bill.lines : [
                       { line_type: 'rent', description: 'Tiền thuê phòng', quantity: 1, amount: bill.rent_amount },
                       { line_type: 'electricity', description: `Tiền điện (${bill.electric_usage} kWh)`, quantity: bill.electric_usage, amount: bill.electric_cost },
@@ -171,6 +247,27 @@ export default function BillsPage() {
           </Button>
         </div>
       )}
+
+      <Dialog open={correctionBill !== null} onOpenChange={(open) => !open && setCorrectionBill(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Điều chỉnh hóa đơn</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Invoice cũ sẽ được lưu ở trạng thái đã hủy.</p>
+            {(['rent', 'electric', 'water', 'other'] as const).map((field) => (
+              <div key={field}>
+                <Label>{field === 'rent' ? 'Tiền thuê' : field === 'electric' ? 'Tiền điện' : field === 'water' ? 'Tiền nước' : 'Phí khác'}</Label>
+                <Input className="mt-1" type="number" min="0" value={correctionForm[field]} onChange={(event) => setCorrectionForm({ ...correctionForm, [field]: Number(event.target.value) })} />
+              </div>
+            ))}
+            <div><Label>Lý do</Label><Input className="mt-1" value={correctionReason} onChange={(event) => setCorrectionReason(event.target.value)} /></div>
+            <p className="text-sm font-semibold">Tổng mới: {formatCurrency(correctionForm.rent + correctionForm.electric + correctionForm.water + correctionForm.other)}</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCorrectionBill(null)}>Hủy</Button>
+            <Button onClick={handleCorrection} disabled={correcting || !correctionReason.trim()}>Lưu điều chỉnh</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
