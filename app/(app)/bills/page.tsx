@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { FileText, ChevronLeft, ChevronRight, Zap, Droplets, Home, Trash2 } from 'lucide-react'
+import { FileText, ChevronLeft, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -140,34 +140,17 @@ export default function BillsPage() {
                 </div>
                 {isSelected && (
                   <div className="mt-4 pt-4 border-t space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="flex items-center gap-2 text-muted-foreground">
-                        <Home className="w-4 h-4" />
-                        Tiền phòng
-                      </span>
-                      <span>{formatCurrency(bill.rent_amount)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="flex items-center gap-2 text-muted-foreground">
-                        <Zap className="w-4 h-4 text-amber-500" />
-                        Điện ({bill.electric_usage} kWh)
-                      </span>
-                      <span>{formatCurrency(bill.electric_cost)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="flex items-center gap-2 text-muted-foreground">
-                        <Droplets className="w-4 h-4 text-blue-500" />
-                        Nước ({bill.water_usage} m³)
-                      </span>
-                      <span>{formatCurrency(bill.water_cost)}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="flex items-center gap-2 text-muted-foreground">
-                        <Trash2 className="w-4 h-4 text-red-500" />
-                        Rác
-                      </span>
-                      <span>{formatCurrency(bill.settings.garbage_price)}</span>
-                    </div>
+                    {(bill.lines?.length ? bill.lines : [
+                      { line_type: 'rent', description: 'Tiền thuê phòng', quantity: 1, amount: bill.rent_amount },
+                      { line_type: 'electricity', description: `Tiền điện (${bill.electric_usage} kWh)`, quantity: bill.electric_usage, amount: bill.electric_cost },
+                      { line_type: 'water', description: `Tiền nước (${bill.water_usage} m³)`, quantity: bill.water_usage, amount: bill.water_cost },
+                      { line_type: 'garbage', description: 'Tiền rác', quantity: 1, amount: bill.other_fees },
+                    ]).map((line) => (
+                      <div key={`${bill.id}-${line.line_type}`} className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">{line.description}</span>
+                        <span>{formatCurrency(line.amount)}</span>
+                      </div>
+                    ))}
                     <div className="flex justify-between font-bold pt-2 border-t">
                       <span>Tổng cộng</span>
                       <span className="text-primary">{formatCurrency(bill.total_amount)}</span>

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { recordPaymentSchema, updatePaymentSchema } from './payments'
+import {
+  paymentHistoryQuerySchema,
+  recordPaymentSchema,
+  updatePaymentSchema,
+} from './payments'
 
 describe('payment request validation', () => {
   it('accepts supported payment methods and positive amounts', () => {
@@ -35,5 +39,14 @@ describe('payment request validation', () => {
         action: 'delete',
       }).success
     ).toBe(false)
+  })
+
+  it('applies bounded defaults to payment history queries', () => {
+    const result = paymentHistoryQuerySchema.parse({})
+
+    expect(result.page).toBe(1)
+    expect(result.page_size).toBe(25)
+    expect(paymentHistoryQuerySchema.safeParse({ page_size: 101 }).success).toBe(false)
+    expect(paymentHistoryQuerySchema.safeParse({ period: '2026-09-02' }).success).toBe(false)
   })
 })

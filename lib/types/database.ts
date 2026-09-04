@@ -121,6 +121,11 @@ export interface Payment {
   reversal_reason: string | null
 }
 
+export interface PaymentHistoryResponse {
+  data: Payment[]
+  pagination: { page: number; page_size: number; total: number }
+}
+
 export interface RoomWithTenant extends Room {
   tenant?: Tenant | null
   contract?: Contract | null
@@ -137,6 +142,7 @@ export interface ContractHistory {
 export interface InvoiceWithDetails extends Invoice {
   room?: Room
   tenant?: Tenant | null
+  lines?: InvoiceLine[]
   display_status: InvoiceDisplayStatus
   settings: LandlordSettings
 }

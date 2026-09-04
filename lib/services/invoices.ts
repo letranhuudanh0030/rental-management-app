@@ -20,6 +20,11 @@ export async function enrichInvoices(
 
   const roomIds = [...new Set(invoices.map((i) => i.room_id))]
   const { data: rooms } = await supabase.from('rooms').select('*').in('id', roomIds)
+  const { data: lines } = await supabase
+    .from('invoice_lines')
+    .select('*')
+    .in('invoice_id', invoices.map((invoice) => invoice.id))
+    .order('created_at')
 
   const { data: contracts } = await supabase
     .from('contracts')
@@ -36,6 +41,7 @@ export async function enrichInvoices(
       ...invoice,
       room,
       tenant,
+      lines: lines?.filter((line) => line.invoice_id === invoice.id) ?? [],
       display_status: getInvoiceDisplayStatus(invoice.payment_status, invoice.due_date),
       settings,
     }
