@@ -32,7 +32,7 @@ export function calculateInvoiceTotal(parts: {
 export function computeDueDate(periodMonth: string, dueDay: number): string {
   const [year, month] = periodMonth.slice(0, 10).split('-').map(Number)
   const day = Math.min(Math.max(dueDay, 1), 28)
-  const due = new Date(year, month, day)
+  const due = new Date(Date.UTC(year, month, day))
   return due.toISOString().slice(0, 10)
 }
 
@@ -40,4 +40,14 @@ export function previousPeriodMonth(periodMonth: string): string {
   const [year, month] = periodMonth.slice(0, 10).split('-').map(Number)
   const date = new Date(year, month - 2, 1)
   return toPeriodMonth(date.getFullYear(), date.getMonth() + 1)
+}
+
+export function isContractValidForPeriod(
+  startDate: string,
+  endDate: string | null,
+  periodMonth: string
+): boolean {
+  const [year, month] = periodMonth.slice(0, 10).split('-').map(Number)
+  const periodEnd = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10)
+  return startDate <= periodEnd && (endDate === null || endDate >= periodMonth.slice(0, 10))
 }

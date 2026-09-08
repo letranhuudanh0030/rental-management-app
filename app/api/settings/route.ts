@@ -20,10 +20,35 @@ export async function PATCH(request: Request) {
   if (errorResponse) return errorResponse
 
   const body = await request.json()
-  const allowed = ['property_name', 'electric_price', 'water_price', 'invoice_due_day']
+  const allowed = [
+    'property_name',
+    'electric_price',
+    'water_price',
+    'invoice_due_day',
+    'garbage_price',
+  ]
   const updates: Record<string, unknown> = {}
   for (const key of allowed) {
     if (body[key] !== undefined) updates[key] = body[key]
+  }
+
+  const numericFields = ['electric_price', 'water_price', 'garbage_price']
+  for (const key of numericFields) {
+    if (
+      updates[key] !== undefined &&
+      (!Number.isInteger(updates[key]) || (updates[key] as number) < 0)
+    ) {
+      return NextResponse.json({ error: `${key} không hợp lệ` }, { status: 400 })
+    }
+  }
+
+  if (
+    updates.invoice_due_day !== undefined &&
+    (!Number.isInteger(updates.invoice_due_day) ||
+      (updates.invoice_due_day as number) < 1 ||
+      (updates.invoice_due_day as number) > 28)
+  ) {
+    return NextResponse.json({ error: 'Ngày hạn thanh toán không hợp lệ' }, { status: 400 })
   }
 
   const { data, error } = await supabase

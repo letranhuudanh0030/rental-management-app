@@ -9,6 +9,7 @@ export async function GET() {
     .from('rooms')
     .select('*')
     .eq('user_id', user!.id)
+    .is('archived_at', null)
     .order('sort_order')
     .order('name')
 
@@ -145,81 +146,17 @@ export async function PATCH(request: Request) {
     const nextTenantId = tenant_id || null
 
     if (currentTenantId !== nextTenantId) {
-      if (!nextTenantId) {
-        await supabase
-          .from('contracts')
-          .update({ is_active: false })
-          .eq('user_id', user!.id)
-          .eq('room_id', room_id)
-          .eq('is_active', true)
+      const { error: assignmentError } = await supabase.rpc('assign_tenant_to_room', {
+        p_room_id: room_id,
+        p_tenant_id: nextTenantId,
+        p_start_date: new Date().toISOString().slice(0, 10),
+        p_monthly_rent: room.base_rent,
+        p_deposit: 0,
+      })
 
-        if (room.status === 'occupied') {
-          await supabase
-            .from('rooms')
-            .update({ status: 'vacant' })
-            .eq('user_id', user!.id)
-            .eq('id', room_id)
-        }
-      } else {
-        const { data: tenant } = await supabase
-          .from('tenants')
-          .select('id')
-          .eq('user_id', user!.id)
-          .eq('id', nextTenantId)
-          .maybeSingle()
-
-        if (!tenant) {
-          return NextResponse.json({ error: 'Không tìm thấy khách thuê' }, { status: 404 })
-        }
-
-        const { data: tenantContract } = await supabase
-          .from('contracts')
-          .select('room_id')
-          .eq('user_id', user!.id)
-          .eq('tenant_id', nextTenantId)
-          .eq('is_active', true)
-          .maybeSingle()
-
-        const previousRoomId = tenantContract?.room_id ?? null
-
-        await supabase
-          .from('contracts')
-          .update({ is_active: false })
-          .eq('user_id', user!.id)
-          .eq('room_id', room_id)
-          .eq('is_active', true)
-
-        await supabase
-          .from('contracts')
-          .update({ is_active: false })
-          .eq('user_id', user!.id)
-          .eq('tenant_id', nextTenantId)
-          .eq('is_active', true)
-
-        await supabase.from('contracts').insert({
-          user_id: user!.id,
-          room_id,
-          tenant_id: nextTenantId,
-          start_date: new Date().toISOString().slice(0, 10),
-          monthly_rent: room.base_rent,
-          deposit: 0,
-          is_active: true,
-        })
-
-        await supabase
-          .from('rooms')
-          .update({ status: 'occupied' })
-          .eq('user_id', user!.id)
-          .eq('id', room_id)
-
-        if (previousRoomId && previousRoomId !== room_id) {
-          await supabase
-            .from('rooms')
-            .update({ status: 'vacant' })
-            .eq('user_id', user!.id)
-            .eq('id', previousRoomId)
-            .eq('status', 'occupied')
-        }
+      if (assignmentError) {
+        const status = assignmentError.message === 'TENANT_NOT_FOUND' ? 404 : 409
+        return NextResponse.json({ error: assignmentError.message }, { status })
       }
     }
   }
@@ -247,6 +184,29 @@ export async function DELETE(request: Request) {
 
   if (!room_id) {
     return NextResponse.json({ error: 'Thiếu room_id' }, { status: 400 })
+  }
+
+  const { count: historyCount, error: historyError } = await supabase
+    .from('invoices')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', user!.id)
+    .eq('room_id', room_id)
+
+  if (historyError) {
+    return NextResponse.json({ error: historyError.message }, { status: 500 })
+  }
+
+  if ((historyCount ?? 0) > 0) {
+    const { data, error } = await supabase
+      .from('rooms')
+      .update({ archived_at: new Date().toISOString(), archived_by: user!.id, status: 'maintenance' })
+      .eq('user_id', user!.id)
+      .eq('id', room_id)
+      .select()
+      .single()
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ archived: true, room: data })
   }
 
   const { data, error } = await supabase

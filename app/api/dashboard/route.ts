@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireUser } from '@/lib/api/auth'
 import { enrichInvoices } from '@/lib/services/invoices'
-import { getInvoiceDisplayStatus, isPaidStatus } from '@/lib/utils/format'
 import type { DashboardSummary } from '@/lib/types/database'
 
 export async function GET() {
@@ -13,71 +12,43 @@ export async function GET() {
 
   const [
     { data: settings },
-    { data: rooms },
-    { count: tenantCount },
+    { data: totals },
     { data: invoices },
   ] = await Promise.all([
     supabase
       .from('landlord_settings')
-      .select('property_name')
+      .select('*')
       .eq('user_id', user!.id)
       .single(),
-    supabase.from('rooms').select('id, status').eq('user_id', user!.id),
-    supabase
-      .from('tenants')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user!.id),
+    supabase.rpc('get_dashboard_totals', { p_period_month: periodMonth }),
     supabase
       .from('invoices')
       .select('*')
       .eq('user_id', user!.id)
       .order('created_at', { ascending: false })
-      .limit(50),
+      .limit(6),
   ])
 
-  const totalRooms = rooms?.length ?? 0
-  const occupiedRooms = rooms?.filter((r) => r.status === 'occupied').length ?? 0
-  const occupancyRate =
-    totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0
+  const dashboardTotals = (totals ?? {}) as Record<string, number>
+  const totalRooms = dashboardTotals.total_rooms ?? 0
+  const occupiedRooms = dashboardTotals.occupied_rooms ?? 0
+  const occupancyRate = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0
 
-  const monthInvoices = (invoices ?? []).filter((i) =>
-    i.period_month.startsWith(periodMonth.slice(0, 7))
-  )
-
-  const monthRevenue = monthInvoices
-    .filter((i) => isPaidStatus(i.payment_status))
-    .reduce((sum, i) => sum + i.total_amount, 0)
-
-  let unpaidCount = 0
-  let unpaidTotal = 0
-  let overdueCount = 0
-  let overdueTotal = 0
-
-  for (const inv of invoices ?? []) {
-    if (isPaidStatus(inv.payment_status)) continue
-    const display = getInvoiceDisplayStatus(inv.payment_status, inv.due_date)
-    if (display === 'overdue') {
-      overdueCount++
-      overdueTotal += inv.total_amount
-    } else {
-      unpaidCount++
-      unpaidTotal += inv.total_amount
-    }
-  }
-
-  const recent = await enrichInvoices(supabase, (invoices ?? []).slice(0, 6))
+  const recent = settings
+    ? await enrichInvoices(supabase, (invoices ?? []).slice(0, 6), settings)
+    : []
 
   const summary: DashboardSummary = {
     property_name: settings?.property_name ?? 'Nhà trọ',
     occupied_rooms: occupiedRooms,
     total_rooms: totalRooms,
-    tenant_count: tenantCount ?? 0,
+    tenant_count: dashboardTotals.tenant_count ?? 0,
     occupancy_rate: occupancyRate,
-    month_revenue: monthRevenue,
-    unpaid_count: unpaidCount,
-    unpaid_total: unpaidTotal,
-    overdue_count: overdueCount,
-    overdue_total: overdueTotal,
+    month_revenue: dashboardTotals.month_revenue ?? 0,
+    unpaid_count: dashboardTotals.unpaid_count ?? 0,
+    unpaid_total: dashboardTotals.unpaid_total ?? 0,
+    overdue_count: dashboardTotals.overdue_count ?? 0,
+    overdue_total: dashboardTotals.overdue_total ?? 0,
     recent_invoices: recent,
   }
 

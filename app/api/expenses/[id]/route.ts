@@ -1,0 +1,46 @@
+import { NextResponse } from 'next/server'
+import { requireUser } from '@/lib/api/auth'
+import {
+  getExpenseValidationMessage,
+  updateExpenseSchema,
+} from '@/lib/validation/expenses'
+
+type Context = { params: Promise<{ id: string }> }
+
+export async function PATCH(request: Request, { params }: Context) {
+  const { supabase, user, errorResponse } = await requireUser()
+  if (errorResponse) return errorResponse
+
+  const body = await request.json().catch(() => null)
+  const parsed = updateExpenseSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({ error: getExpenseValidationMessage(parsed.error) }, { status: 400 })
+  }
+
+  const { id } = await params
+  const { data, error } = await supabase
+    .from('expenses')
+    .update(parsed.data)
+    .eq('id', id)
+    .eq('user_id', user!.id)
+    .select()
+    .single()
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 404 })
+  return NextResponse.json(data)
+}
+
+export async function DELETE(_request: Request, { params }: Context) {
+  const { supabase, user, errorResponse } = await requireUser()
+  if (errorResponse) return errorResponse
+
+  const { id } = await params
+  const { error } = await supabase
+    .from('expenses')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', user!.id)
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return new NextResponse(null, { status: 204 })
+}

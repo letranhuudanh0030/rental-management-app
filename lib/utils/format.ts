@@ -67,6 +67,7 @@ export function getInvoiceDisplayStatus(
   paymentStatus: PaymentStatus,
   dueDate: string
 ): InvoiceDisplayStatus {
+  if (paymentStatus === 'void') return 'void'
   if (paymentStatus === 'paid_cash') return 'paid_cash'
   if (paymentStatus === 'paid_transfer') return 'paid_transfer'
   const due = new Date(dueDate.includes('T') ? dueDate : `${dueDate}T00:00:00`)
@@ -89,6 +90,8 @@ export function getPaymentStatusColor(status: InvoiceDisplayStatus): string {
       return 'bg-destructive/10 text-destructive'
     case 'unpaid':
       return 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-200'
+    case 'void':
+      return 'bg-muted text-muted-foreground'
   }
 }
 
@@ -102,6 +105,8 @@ export function getPaymentStatusText(status: InvoiceDisplayStatus): string {
       return 'Quá hạn'
     case 'unpaid':
       return 'Chưa thu'
+    case 'void':
+      return 'Đã hủy'
   }
 }
 

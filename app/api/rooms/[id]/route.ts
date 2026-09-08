@@ -31,6 +31,40 @@ export async function DELETE(
   const { supabase, user, errorResponse } = await requireUser()
   if (errorResponse) return errorResponse
 
+  const [invoiceHistory, meterHistory, contractHistory] = await Promise.all([
+    supabase
+      .from('invoices')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user!.id)
+      .eq('room_id', id),
+    supabase
+      .from('meter_readings')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user!.id)
+      .eq('room_id', id),
+    supabase
+      .from('contracts')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user!.id)
+      .eq('room_id', id),
+  ])
+
+  const historyError = invoiceHistory.error ?? meterHistory.error ?? contractHistory.error
+  if (historyError) {
+    return NextResponse.json({ error: historyError.message }, { status: 500 })
+  }
+
+  if (
+    (invoiceHistory.count ?? 0) > 0 ||
+    (meterHistory.count ?? 0) > 0 ||
+    (contractHistory.count ?? 0) > 0
+  ) {
+    return NextResponse.json(
+      { error: 'Không thể xoá phòng đã có lịch sử. Hãy chuyển sang bảo trì hoặc trống.' },
+      { status: 409 }
+    )
+  }
+
   const { error } = await supabase
     .from('rooms')
     .delete()

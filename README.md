@@ -40,7 +40,7 @@ npx supabase link --project-ref YOUR_REF
 npx supabase db push
 ```
 
-Hoặc dán nội dung `supabase/migrations/20260527000000_initial_schema.sql` vào SQL Editor trên dashboard.
+Hoặc chạy các file trong `supabase/migrations/` theo thứ tự trên SQL Editor của dashboard.
 
 4. Trong **Authentication → Providers**, bật Email. Tắt “Confirm email” nếu muốn dev nhanh (không khuyến nghị production).
 

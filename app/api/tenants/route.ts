@@ -66,27 +66,21 @@ export async function POST(request: Request) {
       .eq('user_id', user!.id)
       .single()
 
-    await supabase
-      .from('contracts')
-      .update({ is_active: false })
-      .eq('room_id', room_id)
-      .eq('user_id', user!.id)
+    if (!room) {
+      return NextResponse.json({ error: 'Không tìm thấy phòng' }, { status: 404 })
+    }
 
-    await supabase.from('contracts').insert({
-      user_id: user!.id,
-      room_id,
-      tenant_id: tenant.id,
-      start_date: start_date ?? new Date().toISOString().slice(0, 10),
-      monthly_rent: monthly_rent ?? room?.base_rent ?? 0,
-      deposit: deposit ?? 0,
-      is_active: true,
+    const { error: assignmentError } = await supabase.rpc('assign_tenant_to_room', {
+      p_room_id: room_id,
+      p_tenant_id: tenant.id,
+      p_start_date: start_date ?? new Date().toISOString().slice(0, 10),
+      p_monthly_rent: monthly_rent ?? room.base_rent,
+      p_deposit: deposit ?? 0,
     })
 
-    await supabase
-      .from('rooms')
-      .update({ status: 'occupied' })
-      .eq('id', room_id)
-      .eq('user_id', user!.id)
+    if (assignmentError) {
+      return NextResponse.json({ error: assignmentError.message }, { status: 409 })
+    }
   }
 
   return NextResponse.json(tenant, { status: 201 })
@@ -166,21 +160,15 @@ export async function PATCH(request: Request) {
     // Unassign: tenant no longer occupies any room
     if (!nextRoomId) {
       if (currentRoomId) {
-        await supabase
-          .from('contracts')
-          .update({ is_active: false })
-          .eq('user_id', user!.id)
-          .eq('tenant_id', tenant_id)
-          .eq('is_active', true)
-
-        await supabase
-          .from('rooms')
-          .update({ status: 'vacant' })
-          .eq('user_id', user!.id)
-          .eq('id', currentRoomId)
-          .eq('status', 'occupied')
+        const { error: assignmentError } = await supabase.rpc('assign_tenant_to_room', {
+          p_room_id: currentRoomId,
+          p_tenant_id: null,
+          p_start_date: new Date().toISOString().slice(0, 10),
+        })
+        if (assignmentError) {
+          return NextResponse.json({ error: assignmentError.message }, { status: 409 })
+        }
       }
-
       return NextResponse.json({ tenant: updatedTenant })
     }
 
@@ -188,22 +176,6 @@ export async function PATCH(request: Request) {
     if (currentRoomId && currentRoomId === nextRoomId) {
       return NextResponse.json({ tenant: updatedTenant })
     }
-
-    // Deactivate any active contract for the target room (avoid 2 active contracts)
-    await supabase
-      .from('contracts')
-      .update({ is_active: false })
-      .eq('user_id', user!.id)
-      .eq('room_id', nextRoomId)
-      .eq('is_active', true)
-
-    // Deactivate active contract(s) for this tenant
-    await supabase
-      .from('contracts')
-      .update({ is_active: false })
-      .eq('user_id', user!.id)
-      .eq('tenant_id', tenant_id)
-      .eq('is_active', true)
 
     const { data: room } = await supabase
       .from('rooms')
@@ -216,31 +188,16 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Không tìm thấy phòng' }, { status: 404 })
     }
 
-    const startDate = new Date().toISOString().slice(0, 10)
-
-    await supabase.from('contracts').insert({
-      user_id: user!.id,
-      room_id: nextRoomId,
-      tenant_id,
-      start_date: startDate,
-      monthly_rent: room.base_rent,
-      deposit: 0,
-      is_active: true,
+    const { error: assignmentError } = await supabase.rpc('assign_tenant_to_room', {
+      p_room_id: nextRoomId,
+      p_tenant_id: tenant_id,
+      p_start_date: new Date().toISOString().slice(0, 10),
+      p_monthly_rent: room.base_rent,
+      p_deposit: 0,
     })
 
-    await supabase
-      .from('rooms')
-      .update({ status: 'occupied' })
-      .eq('user_id', user!.id)
-      .eq('id', nextRoomId)
-
-    if (currentRoomId) {
-      await supabase
-        .from('rooms')
-        .update({ status: 'vacant' })
-        .eq('user_id', user!.id)
-        .eq('id', currentRoomId)
-        .eq('status', 'occupied')
+    if (assignmentError) {
+      return NextResponse.json({ error: assignmentError.message }, { status: 409 })
     }
   }
 

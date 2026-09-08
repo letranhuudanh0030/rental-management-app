@@ -55,3 +55,11 @@ export async function apiPatch<T>(url: string, body: unknown): Promise<T> {
   if (!res.ok) throw new Error(json.error ?? 'Request failed')
   return json
 }
+
+export async function apiDelete(url: string): Promise<void> {
+  const res = await fetch(url, { method: 'DELETE' })
+  if (!res.ok) {
+    const json = await res.json().catch(() => ({}))
+    throw new Error(json.error ?? 'Request failed')
+  }
+}

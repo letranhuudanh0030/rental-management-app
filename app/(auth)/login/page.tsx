@@ -74,7 +74,6 @@ export default function LoginPage() {
             {error && (
               <p className="text-sm text-destructive text-center">{error}</p>
             )}
-            <p>Account: admin@admin.com/123456</p>
             <Button type="submit" className="w-full h-12 text-base" disabled={loading}>
               {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
             </Button>

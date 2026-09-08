@@ -2,7 +2,7 @@
 
 import { Suspense, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Check, AlertTriangle, Clock, Phone, MessageCircle } from 'lucide-react'
+import { Check, AlertTriangle, Clock, Phone, MessageCircle, History } from 'lucide-react'
 import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { apiPatch, apiPost, useFetch } from '@/hooks/use-fetch'
-import type { InvoiceWithDetails } from '@/lib/types/database'
+import type { InvoiceWithDetails, PaymentHistoryResponse } from '@/lib/types/database'
 import {
   formatCurrency,
   getPaymentStatusColor,
@@ -31,6 +31,10 @@ function PaymentsContent() {
   const initialFilter = (searchParams.get('filter') as FilterStatus) ?? 'all'
 
   const { data: bills, loading, refetch } = useFetch<InvoiceWithDetails[]>('/api/invoices')
+  const { data: paymentHistory, loading: historyLoading } = useFetch<PaymentHistoryResponse>(
+    '/api/payments?page_size=25',
+    []
+  )
   const [filterStatus, setFilterStatus] = useState<FilterStatus>(initialFilter)
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean
@@ -158,6 +162,54 @@ function PaymentsContent() {
           </CardContent>
         </Card>
       </div>
+
+      <section className="px-4 pb-4">
+        <div className="flex items-center gap-2 mb-2">
+          <History className="w-4 h-4 text-muted-foreground" />
+          <h2 className="font-semibold">Lịch sử thanh toán</h2>
+          {paymentHistory?.pagination.total ? (
+            <span className="text-xs text-muted-foreground">
+              {paymentHistory.pagination.total} giao dịch
+            </span>
+          ) : null}
+        </div>
+        <Card>
+          <CardContent className="p-0 divide-y">
+            {historyLoading && <div className="p-4 text-sm text-muted-foreground">Đang tải lịch sử...</div>}
+            {!historyLoading && paymentHistory?.data.length === 0 && (
+              <div className="p-4 text-sm text-muted-foreground">Chưa có giao dịch thanh toán</div>
+            )}
+            {paymentHistory?.data.map((payment) => {
+              const bill = bills?.find((item) => item.id === payment.invoice_id)
+              const isReversed = payment.status === 'reversed'
+              return (
+                <div key={payment.id} className="p-3 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">
+                      Phòng {bill?.room?.name ?? '—'} · {bill?.tenant?.name ?? 'Không rõ khách'}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {payment.method === 'cash' ? 'Tiền mặt' : 'Chuyển khoản'} ·{' '}
+                      {new Date(payment.paid_at).toLocaleString('vi-VN')}
+                    </p>
+                    {isReversed && payment.reversal_reason && (
+                      <p className="text-xs text-destructive truncate">{payment.reversal_reason}</p>
+                    )}
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className={`font-semibold ${isReversed ? 'line-through text-muted-foreground' : ''}`}>
+                      {formatCurrency(payment.amount)}
+                    </p>
+                    <p className={`text-xs ${isReversed ? 'text-destructive' : 'text-primary'}`}>
+                      {isReversed ? 'Đã hoàn tác' : 'Đang hiệu lực'}
+                    </p>
+                  </div>
+                </div>
+              )
+            })}
+          </CardContent>
+        </Card>
+      </section>
 
       <div className="px-4 space-y-2">
         {filteredBills.map((bill) => (

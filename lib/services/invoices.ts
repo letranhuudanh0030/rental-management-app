@@ -5,6 +5,7 @@ import {
   calculateUtilityCost,
   calculateWaterUsage,
   computeDueDate,
+  isContractValidForPeriod,
   previousPeriodMonth,
 } from '@/lib/utils/billing'
 import { getInvoiceDisplayStatus } from '@/lib/utils/format'
@@ -19,6 +20,11 @@ export async function enrichInvoices(
 
   const roomIds = [...new Set(invoices.map((i) => i.room_id))]
   const { data: rooms } = await supabase.from('rooms').select('*').in('id', roomIds)
+  const { data: lines } = await supabase
+    .from('invoice_lines')
+    .select('*')
+    .in('invoice_id', invoices.map((invoice) => invoice.id))
+    .order('created_at')
 
   const { data: contracts } = await supabase
     .from('contracts')
@@ -35,6 +41,7 @@ export async function enrichInvoices(
       ...invoice,
       room,
       tenant,
+      lines: lines?.filter((line) => line.invoice_id === invoice.id) ?? [],
       display_status: getInvoiceDisplayStatus(invoice.payment_status, invoice.due_date),
       settings,
     }
@@ -61,7 +68,7 @@ export async function generateInvoicesForPeriod(
 
   const { data: contracts } = await supabase
     .from('contracts')
-    .select('id, room_id, monthly_rent')
+    .select('id, room_id, monthly_rent, start_date, end_date')
     .eq('user_id', userId)
     .eq('is_active', true)
     .in('room_id', roomIds)
@@ -92,8 +99,14 @@ export async function generateInvoicesForPeriod(
 
   const rows = occupiedRooms
     .filter((room) => !existingRoomIds.has(room.id))
-    .map((room) => {
-      const contract = contracts?.find((c) => c.room_id === room.id)
+    .flatMap((room) => {
+      const contract = contracts?.find(
+        (candidate) =>
+          candidate.room_id === room.id &&
+          isContractValidForPeriod(candidate.start_date, candidate.end_date, periodMonth)
+      )
+      if (!contract) return []
+
       const reading = readings?.find((r) => r.room_id === room.id)
       const prev = prevReadings?.find((r) => r.room_id === room.id)
 
@@ -106,7 +119,7 @@ export async function generateInvoicesForPeriod(
       const waterUsage = calculateWaterUsage(Number(waterPrev), Number(waterCurr))
       const electricCost = calculateUtilityCost(electricUsage, settings.electric_price)
       const waterCost = calculateUtilityCost(waterUsage, settings.water_price)
-      const rentAmount = contract?.monthly_rent ?? room.base_rent
+      const rentAmount = contract!.monthly_rent
 
       const total = calculateInvoiceTotal({
         rent_amount: rentAmount,
@@ -115,10 +128,10 @@ export async function generateInvoicesForPeriod(
         other_fees: settings.garbage_price, // tiền rác
       })
 
-      return {
+      return [{
         user_id: userId,
         room_id: room.id,
-        contract_id: contract?.id ?? null,
+        contract_id: contract.id,
         period_month: periodMonth,
         rent_amount: rentAmount,
         electric_usage: electricUsage,
@@ -129,15 +142,27 @@ export async function generateInvoicesForPeriod(
         total_amount: total ,
         due_date: dueDate,
         payment_status: 'unpaid' as const,
-      }
+        lines: [
+          { line_type: 'rent', description: 'Tiền thuê phòng', quantity: 1, unit_price: rentAmount, amount: rentAmount },
+          { line_type: 'electricity', description: 'Tiền điện', quantity: electricUsage, unit_price: settings.electric_price, amount: electricCost },
+          { line_type: 'water', description: 'Tiền nước', quantity: waterUsage, unit_price: settings.water_price, amount: waterCost },
+          { line_type: 'garbage', description: 'Tiền rác', quantity: 1, unit_price: settings.garbage_price, amount: settings.garbage_price },
+        ],
+      }]
     })
 
   if (rows.length === 0) {
     return { created: 0, skipped: existingRoomIds.size }
   }
 
-  const { error } = await supabase.from('invoices').insert(rows)
-  if (error) throw error
+  for (const row of rows) {
+    const { lines, ...invoice } = row
+    const { error } = await supabase.rpc('create_invoice_with_lines', {
+      p_invoice: invoice,
+      p_lines: lines,
+    })
+    if (error) throw error
+  }
 
   return { created: rows.length, skipped: existingRoomIds.size }
 }
